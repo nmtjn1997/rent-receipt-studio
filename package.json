@@ -1,0 +1,35 @@
+{
+  "name": "rent-receipt",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5177 --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "verify": "npm run typecheck && npm run test && npm run build && npm run e2e",
+    "samples": "SAMPLES_DIR=out vitest run tests/samples.test.ts"
+  },
+  "dependencies": {
+    "jszip": "^3.10.2",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "pdfjs-dist": "^6.3.289",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
