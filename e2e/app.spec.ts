@@ -32,22 +32,26 @@ test('blank profile blocks download until required fields are filled', async ({ 
   await expect(page.getByTestId('download-pdf')).toBeEnabled();
 });
 
-test('full FY schedule, escalation, override, and live preview', async ({ page }) => {
+test('full FY schedule, override, and live preview', async ({ page }) => {
   await blank(page);
   await fillBasics(page);
-  await page.getByLabel('Yearly increase (%)').fill('10');
-  await page.getByLabel('Rent in force since').fill('2025-04-01');
   await page.getByLabel('Rent from').fill('2026-04-01');
   await page.getByLabel('Rent upto').fill('2027-03-31');
   await expect(page.getByTestId('schedule').locator('tbody tr')).toHaveCount(12);
-  // 20000 raised 10% once after 12 months: 22000 x 12
-  await expect(page.getByTestId('total')).toHaveText('2,64,000');
+  await expect(page.getByTestId('total')).toHaveText('2,40,000');
   await page.getByLabel('Rent for Jun 2026').fill('25000');
-  await expect(page.getByTestId('total')).toHaveText('2,67,000');
+  await expect(page.getByTestId('total')).toHaveText('2,45,000');
   await page.getByRole('button', { name: 'reset' }).click();
-  await expect(page.getByTestId('total')).toHaveText('2,64,000');
+  await expect(page.getByTestId('total')).toHaveText('2,40,000');
   await expect(page.getByTestId('preview')).toBeVisible();
   await expect(page.getByTestId('preview')).toHaveAttribute('src', /^blob:/);
+});
+
+test('the form no longer asks for increases, proration or colour', async ({ page }) => {
+  await blank(page);
+  for (const gone of ['Yearly increase (%)', 'Increase every (months)', 'Partial months', 'Rent in force since', 'Accent colour']) {
+    await expect(page.getByLabel(gone)).toHaveCount(0);
+  }
 });
 
 test('downloads a valid PDF named for the tenant and FY', async ({ page }) => {

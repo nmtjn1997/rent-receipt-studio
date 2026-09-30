@@ -26,8 +26,7 @@ const SAMPLE: Partial<Config> = {
   landlordPan: 'ABCDE1234F',
   landlordAddress: '14 Lake View Apartments, MG Road, Bengaluru 560001',
   propertyAddress: 'Flat 4B, Lake View Apartments, MG Road, Bengaluru 560001',
-  baseRent: 25000,
-  escalationPct: 5,
+  monthlyRent: 25000,
 };
 
 const slug = (s: string) => s.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'rent';
@@ -140,7 +139,7 @@ export function App() {
     download(new Blob([JSON.stringify({ ...cfg, signature: '' }, null, 2)], { type: 'application/json' }), `${slug(cfg.label)}.json`);
 
   const importJson = async (file: File) => {
-    const KNOWN = ['tenantName', 'landlordName', 'propertyAddress', 'baseRent', 'label'];
+    const KNOWN = ['tenantName', 'landlordName', 'propertyAddress', 'monthlyRent', 'baseRent', 'label'];
     try {
       const raw = JSON.parse(await file.text()) as unknown;
       const list = Array.isArray(raw) ? raw : [raw];
@@ -172,7 +171,7 @@ export function App() {
     ...extra,
   });
   const LIMITS: Partial<Record<keyof Config, [number, number]>> = {
-    baseRent: [0, 100_000_000], escalationPct: [0, 100], escalationMonths: [1, 120],
+    monthlyRent: [0, 100_000_000],
   };
   const num = (key: keyof Config) => ({
     type: 'number',
@@ -227,7 +226,7 @@ export function App() {
           <Section
             title="Parties"
             aside={
-              !cfg.tenantName && !cfg.landlordName && !cfg.baseRent ? (
+              !cfg.tenantName && !cfg.landlordName && !cfg.monthlyRent ? (
                 <button type="button" className="link" onClick={() => update(SAMPLE)}>
                   Fill sample data
                 </button>
@@ -247,8 +246,8 @@ export function App() {
                 onChange={(e) => update({ landlordPan: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
               />
             </Field>
-            <Field label="Landlord's address" wide hint="Leave empty to omit the line.">
-              <textarea rows={2} {...text('landlordAddress')} />
+            <Field label="Landlord's address (optional)" wide hint="Leave empty to print the property address, usual when the owner lives there.">
+              <textarea rows={2} {...text('landlordAddress', { placeholder: 'Same as the property address' })} />
             </Field>
             <Field label="Rented property address" wide required error={errorFor('propertyAddress')}>
               <textarea rows={2} {...text('propertyAddress')} />
@@ -272,26 +271,11 @@ export function App() {
             </Field>
             <Field label="Rent from" required error={errorFor('rentFrom')}><input type="date" {...text('rentFrom')} /></Field>
             <Field label="Rent upto" required><input type="date" {...text('rentTo')} /></Field>
-            <Field label="Monthly rent (INR)" required error={errorFor('baseRent')} hint="Rent from the agreement start date below.">
-              <input {...num('baseRent')} inputMode="numeric" />
-            </Field>
-            <Field label="Rent in force since" hint="Agreement or last revision date.">
-              <input type="date" {...text('baseRentFrom')} />
-            </Field>
-            <Field label="Yearly increase (%)" hint="0 for a flat rent.">
-              <input {...num('escalationPct')} step="0.5" />
-            </Field>
-            <Field label="Increase every (months)">
-              <input {...num('escalationMonths')} />
+            <Field label="Monthly rent (INR)" required error={errorFor('monthlyRent')} hint="If one month differs, change it in the schedule below.">
+              <input {...num('monthlyRent')} inputMode="numeric" />
             </Field>
             <Field label="Paid on day of month" hint="1 to 31. Short months use their last day.">
               <input type="number" min={1} max={31} value={cfg.paymentDay} onChange={(e) => update({ paymentDay: Math.min(31, Math.max(1, Math.round(Number(e.target.value)) || 1)) })} />
-            </Field>
-            <Field label="Partial months">
-              <select value={cfg.prorate ? 'pro' : 'full'} onChange={(e) => update({ prorate: e.target.value === 'pro' })}>
-                <option value="pro">Prorate by days</option>
-                <option value="full">Charge full month</option>
-              </select>
             </Field>
           </Section>
 
@@ -347,7 +331,6 @@ export function App() {
                 <option>Courier</option>
               </select>
             </Field>
-            <Field label="Accent colour"><input type="color" {...text('accent')} /></Field>
             <Field label="Date style">
               <select {...text('dateFormat')}>
                 <option value="mdy">Apr 1, 2026</option>

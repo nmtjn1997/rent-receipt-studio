@@ -16,13 +16,9 @@ export function defaultConfig(now = new Date()): Config {
     fyStart: fy,
     rentFrom: from,
     rentTo: to,
-    baseRent: 0,
-    baseRentFrom: from,
-    escalationPct: 0,
-    escalationMonths: 12,
+    monthlyRent: 0,
     overrides: {},
     paymentDates: {},
-    prorate: true,
     paymentDay: 1,
     paymentMode: 'Online Transfer',
     grouping: 'monthly',
@@ -32,7 +28,6 @@ export function defaultConfig(now = new Date()): Config {
     numberPrefix: 'RR-',
     template: 'classic',
     font: 'Helvetica',
-    accent: '#0f766e',
     grayPage: false,
     showStamp: true,
     showPan: true,
@@ -54,13 +49,13 @@ const STRING_KEYS = [
   'label', 'tenantName', 'landlordName', 'landlordAddress', 'propertyAddress', 'paymentMode', 'numberPrefix',
   'title', 'subtitle', 'footer',
 ] as const;
-const BOOL_KEYS = ['prorate', 'numbering', 'grayPage', 'showStamp', 'showPan'] as const;
-const DATE_KEYS = ['rentFrom', 'rentTo', 'baseRentFrom'] as const;
+const BOOL_KEYS = ['numbering', 'grayPage', 'showStamp', 'showPan'] as const;
+const DATE_KEYS = ['rentFrom', 'rentTo'] as const;
 const NUM_KEYS: Array<[keyof Config, number, number]> = [
-  ['fyStart', 1990, 2100], ['baseRent', 0, 100_000_000], ['escalationPct', 0, 100], ['escalationMonths', 1, 120], ['paymentDay', 1, 31],
+  ['fyStart', 1990, 2100], ['monthlyRent', 0, 100_000_000], ['paymentDay', 1, 31],
 ];
 
-const INT_KEYS = new Set<keyof Config>(['fyStart', 'escalationMonths', 'paymentDay']);
+const INT_KEYS = new Set<keyof Config>(['fyStart', 'paymentDay']);
 
 const MAX_TEXT = 500;
 
@@ -70,7 +65,9 @@ const MAX_TEXT = 500;
  */
 export function normalizeConfig(raw: Partial<Config> | Record<string, unknown>): Config {
   const base = defaultConfig();
-  const src = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const src = (raw && typeof raw === 'object' ? { ...raw } : {}) as Record<string, unknown>;
+  // Accepts `baseRent`, the field name used by earlier exports.
+  if (src.monthlyRent === undefined && src.baseRent !== undefined) src.monthlyRent = src.baseRent;
   const out: Record<string, unknown> = { ...base };
 
   out.id = typeof src.id === 'string' && src.id ? src.id.slice(0, 64) : base.id;
@@ -88,7 +85,6 @@ export function normalizeConfig(raw: Partial<Config> | Record<string, unknown>):
     if ((allowed as readonly unknown[]).includes(src[k])) out[k] = src[k];
   }
   if ([1, 2, 3, 4].includes(Number(src.perPage))) out.perPage = Number(src.perPage);
-  if (typeof src.accent === 'string' && /^#[0-9a-f]{6}$/i.test(src.accent)) out.accent = src.accent;
   if (typeof src.signature === 'string' && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(src.signature)) {
     out.signature = src.signature;
   }

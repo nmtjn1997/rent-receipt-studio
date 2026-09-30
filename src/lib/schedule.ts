@@ -5,15 +5,6 @@ const GROUP_SIZE = { monthly: 1, quarterly: 3, 'half-yearly': 6, consolidated: I
 
 const paise = (n: number) => Math.round(n * 100) / 100;
 
-export function escalatedRent(cfg: Pick<Config, 'baseRent' | 'baseRentFrom' | 'escalationPct' | 'escalationMonths'>, y: number, m: number): number {
-  // An unusable base date means "no escalation yet" rather than NaN rent.
-  const base = isValidISO(cfg.baseRentFrom) ? parseISO(cfg.baseRentFrom) : { y, m };
-  const elapsed = Math.max(0, (y - base.y) * 12 + (m - base.m));
-  const every = Math.max(1, cfg.escalationMonths || 12);
-  const steps = Math.floor(elapsed / every);
-  return paise(cfg.baseRent * Math.pow(1 + cfg.escalationPct / 100, steps));
-}
-
 export function buildMonths(cfg: Config): MonthRow[] {
   if (!isValidISO(cfg.rentFrom) || !isValidISO(cfg.rentTo) || cfg.rentFrom > cfg.rentTo) return [];
   const from = parseISO(cfg.rentFrom);
@@ -31,9 +22,9 @@ export function buildMonths(cfg: Config): MonthRow[] {
     const days = parseISO(periodEnd).d - parseISO(periodStart).d + 1;
     const key = monthStart.slice(0, 7);
     const overridden = cfg.overrides[key] !== undefined;
-    const rent = overridden ? paise(cfg.overrides[key]) : escalatedRent(cfg, y, m);
+    const rent = paise(overridden ? cfg.overrides[key] : cfg.monthlyRent);
     const partial = days < dim;
-    const amount = overridden || !partial || !cfg.prorate ? rent : paise((rent * days) / dim);
+    const amount = overridden || !partial ? rent : paise((rent * days) / dim);
     const due = toISO(y, m, Math.min(Math.max(1, cfg.paymentDay), dim));
     const picked = cfg.paymentDates[key];
     const paymentDateOverridden = picked !== undefined && isValidISO(picked);

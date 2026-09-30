@@ -30,11 +30,7 @@ const FAMILY: Record<FontFamily, [StandardFonts, StandardFonts]> = {
 
 const BASE_SIZE = { 1: 14, 2: 12.5, 3: 10.5, 4: 9 } as const;
 
-export function hexToRgb(hex: string) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  const n = m ? parseInt(m[1], 16) : 0x0f766e;
-  return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
-}
+const ACCENT = rgb(0x0f / 255, 0x76 / 255, 0x6e / 255);
 
 /** Standard PDF fonts cover Latin-1 only; anything else would make pdf-lib throw. */
 function clean(text: string, font: PDFFont): string {
@@ -201,6 +197,9 @@ function drawDashedRule(page: PDFPage, y: number, x1: number, x2: number) {
 
 const MIN_SIZE = 7;
 
+/** Airy line spacing at 1 or 2 receipts per page, tighter when three or four share a page. */
+const lineHeightFor = (per: number, size: number) => size * (per <= 2 ? 1.75 : 1.5);
+
 /**
  * Largest font size (shared by every receipt, so the page looks even) at which
  * each receipt still fits its slot. Measured by drawing on a scratch document.
@@ -209,12 +208,12 @@ async function fitSize(cfg: Config, receipts: Receipt[], slotH: number, contentW
   const scratch = await PDFDocument.create();
   const [reg, bold] = FAMILY[cfg.font];
   const fonts: Fonts = { regular: await scratch.embedFont(reg), bold: await scratch.embedFont(bold) };
-  const accent = hexToRgb(cfg.accent);
+  const accent = ACCENT;
   for (let size: number = BASE_SIZE[cfg.perPage]; size >= MIN_SIZE; size -= 0.5) {
     const top = A4.h - MARGIN;
     const fits = receipts.every((r) => {
       const page = scratch.addPage([A4.w, A4.h]);
-      const bottom = drawOne(page, fonts, cfg, r, { top: top - 14, size, lineH: size * 1.55, contentW, sig: undefined, accent });
+      const bottom = drawOne(page, fonts, cfg, r, { top: top - 14, size, lineH: lineHeightFor(cfg.perPage, size), contentW, sig: undefined, accent });
       return top - bottom <= slotH - 6;
     });
     if (fits) return size;
@@ -230,7 +229,7 @@ export async function generatePdf(cfg: Config, receipts: Receipt[]): Promise<Uin
   const [reg, bold] = FAMILY[cfg.font];
   const fonts: Fonts = { regular: await pdf.embedFont(reg), bold: await pdf.embedFont(bold) };
   const sig = await embedSignature(pdf, cfg.signature);
-  const accent = hexToRgb(cfg.accent);
+  const accent = ACCENT;
   const per = cfg.perPage;
   const contentW = A4.w - MARGIN * 2;
   const slotH = (A4.h - MARGIN * 2) / per;
@@ -238,7 +237,7 @@ export async function generatePdf(cfg: Config, receipts: Receipt[]): Promise<Uin
   if (size === null) {
     throw new Error(`The text is too long to fit ${per} receipt${per > 1 ? 's' : ''} per page. Shorten the addresses or use fewer receipts per page.`);
   }
-  const lineH = size * 1.55;
+  const lineH = lineHeightFor(per, size);
   const pageCount = Math.max(1, Math.ceil(receipts.length / per));
 
   for (let p = 0; p < pageCount; p++) {
@@ -269,6 +268,9 @@ function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx): 
   const titleSize = c.size + 6;
   const ink = rgb(0.08, 0.08, 0.08);
   let y = c.top;
+  // Roomy spacing between blocks when one or two receipts share a page, compact for three or four.
+  const k = cfg.perPage <= 2 ? 1 : 0.5;
+  const itemGap = c.size * (0.6 + 0.9 * k);
 
   if (cfg.template === 'minimal') {
     // The border is drawn after layout, once the block height is known.
@@ -299,7 +301,7 @@ function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx): 
     y = drawRich(page, fonts, [{ t: cfg.subtitle }], {
       x: x0, y: y + 1, size: c.size - 2.5, lineH: c.size, maxW: c.contentW, align: 'center', color: rgb(0.3, 0.3, 0.3),
     });
-    y -= 10;
+    y -= 6 + c.size * 1.3 * k;
   }
 
   if (r.no && cfg.template !== 'modern') {
@@ -309,23 +311,24 @@ function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx): 
   }
 
   y = drawRich(page, fonts, receiptBody(cfg, r), { x: x0, y, size: c.size, lineH: c.lineH, maxW: c.contentW });
-  y -= c.lineH * 0.7;
+  y -= c.lineH * (0.5 + 1.3 * k);
 
   const leftW = c.contentW * 0.6;
   const rightW = c.contentW * 0.36;
   const rightX = x0 + c.contentW - rightW;
   const ownerSegs: Seg[][] = [[{ t: 'Name of Owner: ' }, { t: cfg.landlordName, b: true }]];
-  if (cfg.landlordAddress.trim()) ownerSegs.push([{ t: 'Address: ' }, { t: cfg.landlordAddress.trim(), b: true }]);
+  const ownerAddress = cfg.landlordAddress.trim() || cfg.propertyAddress.replace(/\s*\n\s*/g, ', ').trim();
+  if (ownerAddress) ownerSegs.push([{ t: 'Address: ' }, { t: ownerAddress, b: true }]);
   if (cfg.showPan && cfg.landlordPan.trim()) ownerSegs.push([{ t: 'PAN: ' }, { t: cfg.landlordPan.trim().toUpperCase(), b: true }]);
   let ly = y;
-  for (const segs of ownerSegs) {
-    ly = drawRich(page, fonts, segs, { x: x0, y: ly, size: c.size, lineH: c.lineH * 0.95, maxW: leftW });
-  }
+  ownerSegs.forEach((segs, i) => {
+    ly = drawRich(page, fonts, segs, { x: x0, y: ly - (i ? itemGap : 0), size: c.size, lineH: c.size * 1.25, maxW: leftW });
+  });
 
   let ry = y;
   if (cfg.showStamp) {
     ry = drawRich(page, fonts, [{ t: '(Affix Revenue Stamp of Re.1/)' }], {
-      x: rightX, y: ry, size: c.size - 1, lineH: c.lineH * 0.9, maxW: rightW, align: 'right',
+      x: rightX, y: ry, size: c.size - 1, lineH: c.size * 1.25, maxW: rightW, align: 'right',
     });
   }
   const sigH = c.size * 3.2;
@@ -343,10 +346,10 @@ function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx): 
     color: rgb(0.5, 0.5, 0.5),
   });
   ry = drawRich(page, fonts, [{ t: 'Signature of House Owner' }], {
-    x: rightX, y: ry, size: c.size - 0.5, lineH: c.lineH * 0.95, maxW: rightW, align: 'right',
+    x: rightX, y: ry, size: c.size - 0.5, lineH: c.size * 1.25, maxW: rightW, align: 'right',
   });
   ry = drawRich(page, fonts, [{ t: 'Date: ' }, { t: formatDate(r.paymentDate, cfg.dateFormat), b: true }], {
-    x: rightX, y: ry, size: c.size - 0.5, lineH: c.lineH * 0.95, maxW: rightW, align: 'right',
+    x: rightX, y: ry - itemGap, size: c.size - 0.5, lineH: c.size * 1.25, maxW: rightW, align: 'right',
   });
 
   let bottom = Math.min(ly, ry);

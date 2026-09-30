@@ -11,22 +11,19 @@ export interface Config {
   tenantName: string;
   landlordName: string;
   landlordPan: string;
+  /** Optional. Falls back to `propertyAddress`, the usual case when the owner lives in the rented house. */
   landlordAddress: string;
   propertyAddress: string;
   /** FY start year: 2026 means FY 2026-27 (Apr 2026 to Mar 2027). */
   fyStart: number;
   rentFrom: string;
   rentTo: string;
-  /** Rent in force from `baseRentFrom`; later months escalate from it. */
-  baseRent: number;
-  baseRentFrom: string;
-  escalationPct: number;
-  escalationMonths: number;
+  /** Flat monthly rent. A month that differs is set in `overrides`. */
+  monthlyRent: number;
   /** 'YYYY-MM' to exact month amount, set by hand in the schedule table. */
   overrides: Record<string, number>;
   /** 'YYYY-MM' to an exact payment date, for months paid on a different day. */
   paymentDates: Record<string, string>;
-  prorate: boolean;
   paymentDay: number;
   paymentMode: string;
   grouping: Grouping;
@@ -36,7 +33,6 @@ export interface Config {
   numberPrefix: string;
   template: TemplateId;
   font: FontFamily;
-  accent: string;
   grayPage: boolean;
   showStamp: boolean;
   showPan: boolean;
@@ -54,7 +50,7 @@ export interface MonthRow {
   periodEnd: string;
   days: number;
   monthDays: number;
-  /** Full-month rent after escalation or override. */
+  /** Full-month rent: the flat rent, or the amount set by hand for that month. */
   rent: number;
   /** Amount for the covered days (prorated when the month is partial). */
   amount: number;

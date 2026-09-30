@@ -25,7 +25,7 @@ Poppler substitutes fonts, so bold can look faint in PNGs. `tests/pdf.test.ts` p
 
 | Path | Job |
 |---|---|
-| `src/lib/schedule.ts` | FY months, escalation, proration, grouping into receipts |
+| `src/lib/schedule.ts` | FY months, proration, grouping into receipts |
 | `src/lib/words.ts` | Indian number to words (`amountToWords`), digit grouping (`inr`) |
 | `src/lib/pdf.ts` | pdf-lib renderer, three templates, rich-text wrapping |
 | `src/lib/validate.ts` | Errors and advisory notes (PAN, dates, future receipts, TDS, stamp) |
@@ -41,7 +41,7 @@ Poppler substitutes fonts, so bold can look faint in PNGs. `tests/pdf.test.ts` p
 1. **No personal data, ever.** Code, tests, docs, screenshots and commit messages use `Test Tenant`, `Test Landlord`, `ABCDE1234F`, `Alex Sharma`, `Priya Verma`. Real profiles live only in the gitignored `src/seed.local.json`.
 2. **Stay client-side.** No fetch, no analytics, no remote fonts or scripts. The nginx CSP sets `connect-src 'none'` and a test suite passes against it; do not loosen it.
 3. **All external data goes through `normalizeConfig`.** Imported JSON and old localStorage are untrusted.
-4. **Rent for a month is `overrides[key] ?? escalatedRent(...)`.** Do not add a second source of truth.
+4. **Rent for a month is `overrides[key] ?? monthlyRent`.** Do not add a second source of truth.
 5. **Standard PDF fonts are Latin-1 only.** New text goes through `clean()` in `pdf.ts` so unsupported characters cannot throw.
 6. **Keep the future-date warning.** A receipt records rent actually paid.
 7. Every behaviour change ships with a test. Prefer asserting on extracted PDF text over snapshots.

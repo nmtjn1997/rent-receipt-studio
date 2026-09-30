@@ -4,7 +4,6 @@ Ordered. An agent or a person takes the first unchecked item, ships it with test
 
 - [ ] Rupee symbol and Devanagari text: embed an open-licensed font (Noto Sans) via pdf-lib fontkit, keep the Latin-1 path as the fast default
 - [ ] Installable offline PWA (manifest + service worker) for the hosted site
-- [ ] Rent-in-force date follows the chosen FY when the profile has never had it edited (the README screenshot shows the current wrong default)
 - [x] Per-receipt payment date override in the month table
 - [ ] Multiple landlords in one profile (co-owners, split rent), one receipt block each
 - [ ] Optional landlord signature drawn on a canvas, alongside image upload
@@ -12,8 +11,6 @@ Ordered. An agent or a person takes the first unchecked item, ships it with test
 - [ ] Lighthouse run in CI with a score floor
 - [ ] Visual regression: rasterise sample PDFs with pdfjs in CI and diff against committed PNGs
 - [ ] Translations of the form (Hindi first); receipt wording stays in English unless asked
-- [ ] Rent agreement clause reminder: warn when rent revision date is earlier than agreement start
-- [ ] Escalation on the exact anniversary day, not the whole month (only matters when the revision date is mid-month)
 - [ ] Sync profiles between two open tabs with the `storage` event instead of last-writer-wins
 - [ ] Pin GitHub Actions by commit SHA
 - [ ] Unit tests for `storage.ts` (load, corrupt entry, quota failure)

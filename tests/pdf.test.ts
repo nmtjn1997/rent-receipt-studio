@@ -16,8 +16,7 @@ const cfg = (over: Partial<Config> = {}): Config => ({
   fyStart: 2026,
   rentFrom: '2026-04-01',
   rentTo: '2027-03-31',
-  baseRent: 33333,
-  baseRentFrom: '2026-04-01',
+  monthlyRent: 33333,
   ...over,
 });
 
@@ -165,14 +164,14 @@ describe('receipt wording', () => {
   };
   it('states a per-month rate only when the amount really is that rate times months', () => {
     expect(body(cfg())).toContain('@ INR 33,333 per month');
-    const partial = cfg({ baseRent: 30000, rentFrom: '2026-04-16', grouping: 'consolidated' });
+    const partial = cfg({ monthlyRent: 30000, rentFrom: '2026-04-16', grouping: 'consolidated' });
     const text = body(partial);
     expect(text).not.toContain('per month');
     expect(text).toContain('Month-wise: Apr 2026 INR 15,000; May 2026 INR 30,000');
     expect(text).toContain('INR 3,45,000/-');
   });
   it('lists each month when rent changes inside a grouped receipt', () => {
-    const c = cfg({ baseRent: 20000, baseRentFrom: '2026-04-01', escalationPct: 10, escalationMonths: 3, grouping: 'half-yearly' });
+    const c = cfg({ monthlyRent: 20000, overrides: { '2026-07': 22000, '2026-08': 22000, '2026-09': 22000 }, grouping: 'half-yearly' });
     expect(body(c)).toMatch(/Month-wise: Apr 2026 INR 20,000;.*Jul 2026 INR 22,000/);
   });
   it('uses the first month payment date on grouped receipts and says so in the date line', () => {
@@ -186,5 +185,40 @@ describe('overlong text', () => {
     const huge = 'word '.repeat(90);
     const c = cfg({ perPage: 4, grouping: 'quarterly', propertyAddress: huge, landlordAddress: huge });
     await expect(generatePdf(c, buildReceipts(c))).rejects.toThrow(/too long to fit 4 receipts per page/);
+  });
+});
+
+describe('owner address', () => {
+  const owner = async (over: Partial<Config>) => {
+    const c = cfg({ perPage: 1, ...over });
+    const doc = await getDocument({ data: await generatePdf(c, buildReceipts(c)), useSystemFonts: true }).promise;
+    const text = (await (await doc.getPage(1)).getTextContent()).items.map((i) => ('str' in i ? i.str : '')).join(' ');
+    return text.replace(/\s+/g, ' ');
+  };
+  it('prints the property address as the owner address when none is given', async () => {
+    const text = await owner({ landlordAddress: '', propertyAddress: '7 Home Street, Homeville' });
+    expect(text).toMatch(/Address: 7 Home Street, Homeville/);
+  });
+  it('prefers an explicit owner address', async () => {
+    const text = await owner({ landlordAddress: '99 Other Road, Elsewhere', propertyAddress: '7 Home Street, Homeville' });
+    expect(text).toMatch(/Address: 99 Other Road, Elsewhere/);
+  });
+});
+
+describe('spacing follows the reference receipt', () => {
+  it('leaves clear gaps after the sub-title and before the owner block, tighter at 4 per page', async () => {
+    const ys = async (perPage: 1 | 2 | 4) => {
+      const c = cfg({ perPage });
+      const doc = await getDocument({ data: await generatePdf(c, buildReceipts(c)), useSystemFonts: true }).promise;
+      const it = (await (await doc.getPage(1)).getTextContent()).items.filter((i) => 'str' in i && i.str.trim());
+      const y = (needle: string) => (it.find((i) => 'str' in i && i.str.includes(needle)) as { transform: number[] }).transform[5];
+      const size = (needle: string) => (it.find((i) => 'str' in i && i.str.includes(needle)) as { transform: number[] }).transform[0];
+      return { subToBody: y('Under Section') - y('Received a sum'), size: size('Received a sum'), ownerToPan: y('Name of Owner') - y('PAN:') };
+    };
+    const two = await ys(2);
+    expect(two.subToBody / two.size).toBeGreaterThan(2);
+    expect(two.ownerToPan / two.size).toBeGreaterThan(3);
+    const four = await ys(4);
+    expect(four.ownerToPan / four.size).toBeLessThan(two.ownerToPan / two.size);
   });
 });

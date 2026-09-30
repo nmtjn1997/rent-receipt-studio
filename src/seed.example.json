@@ -9,9 +9,7 @@
     "fyStart": 2026,
     "rentFrom": "2026-04-01",
     "rentTo": "2027-03-31",
-    "baseRent": 25000,
-    "baseRentFrom": "2025-04-01",
-    "escalationPct": 5,
-    "paymentMode": "Online Transfer"
+    "paymentMode": "Online Transfer",
+    "monthlyRent": 25000
   }
 ]

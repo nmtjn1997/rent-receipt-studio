@@ -9,5 +9,6 @@ This is a formatting tool, not tax advice. Rules change; confirm with your emplo
 | Revenue stamp | Cash rent above INR 5,000 needs a Re.1 stamp. The stamp line is on by default. |
 | TDS on rent | A tenant who is an individual pays 2% TDS under Section 194-IB once rent goes above INR 50,000 a month (confirm the current rate). The tool shows a note. The receipt is unchanged. |
 | Future dates | Each receipt is dated with its payment date. The tool warns about receipts dated in the future, because a receipt should record rent that was actually paid. |
-| Escalation | Rent rises by the percentage you enter, once per interval, from the "rent in force since" date. Any month can be overridden by hand. |
-| Partial months | Prorated by days by default, or charged in full if you switch the setting. |
+| Rent changes | One flat monthly rent. If rent changed mid-year, set the different months by hand in the schedule. |
+| Partial months | Prorated by days. |
+| Owner address | Optional. When blank, the property address is printed. Form 12BB asks for the landlord's address above INR 1 lakh a year, which is usually the rented house itself. |

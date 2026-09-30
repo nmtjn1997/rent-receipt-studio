@@ -16,10 +16,10 @@ Everything runs in your browser, so your PAN, names and addresses are never uplo
 ## What it does
 
 - Picks a financial year and builds every month for you (12 receipts, or as many as you choose).
-- Handles yearly rent increases (for example 10% each April) and lets you override any single month.
-- Prorates part months, or charges the full month, your call.
+- One flat monthly rent. Change any single month in the schedule if it differs.
+- Part months are prorated by days automatically.
 - One receipt per month, per quarter, per half-year, or one consolidated receipt.
-- 1 to 4 receipts per A4 page, three templates, three fonts, your accent colour, optional receipt numbers.
+- 1 to 4 receipts per A4 page, three templates, three fonts, optional receipt numbers.
 - Amount in words the Indian way (lakh, crore). Dates in three styles.
 - Upload a signature image, or leave the line blank to sign after printing.
 - Saved profiles (several flats or landlords), JSON import and export, ZIP of single PDFs, print.

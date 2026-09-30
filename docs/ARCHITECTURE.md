@@ -7,7 +7,7 @@ Everything runs in the visitor's browser. There is no server component, database
 ```mermaid
 flowchart LR
   UI["App.tsx<br/>form, table, preview"] --> Store["storage.ts<br/>localStorage profiles"]
-  UI --> Sched["schedule.ts<br/>months, escalation, grouping"]
+  UI --> Sched["schedule.ts<br/>months, proration, grouping"]
   UI --> Val["validate.ts<br/>PAN, dates, tax notes"]
   UI -->|"dynamic import"| Pdf["pdf.ts<br/>pdf-lib renderer"]
   Sched --> Dates["dates.ts"]
@@ -17,7 +17,7 @@ flowchart LR
 
 | Module | Responsibility |
 |---|---|
-| `src/lib/schedule.ts` | Turns a profile into month rows (escalation, proration, overrides) and then into receipts (monthly, quarterly, half-yearly, consolidated). Pure functions. |
+| `src/lib/schedule.ts` | Turns a profile into month rows (flat rent, proration, hand-set months) and then into receipts (monthly, quarterly, half-yearly, consolidated). Pure functions. |
 | `src/lib/pdf.ts` | Lays receipts out on A4 with pdf-lib. Three templates, 1 to 4 per page, bold values, text stays selectable. |
 | `src/lib/validate.ts` | Blocking errors (missing names, bad PAN) and advisory notes (future dates, TDS, stamp). |
 | `src/lib/defaults.ts` | `normalizeConfig` coerces any untrusted object into a valid profile. |

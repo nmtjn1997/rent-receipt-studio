@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultConfig } from '../src/lib/defaults';
-import { buildMonths, buildReceipts, escalatedRent, totalRent } from '../src/lib/schedule';
+import { buildMonths, buildReceipts, totalRent } from '../src/lib/schedule';
 import { validate } from '../src/lib/validate';
 import type { Config } from '../src/lib/types';
 
@@ -13,23 +13,8 @@ const base = (over: Partial<Config> = {}): Config => ({
   fyStart: 2026,
   rentFrom: '2026-04-01',
   rentTo: '2027-03-31',
-  baseRent: 66000,
-  baseRentFrom: '2025-04-01',
-  escalationPct: 10,
+  monthlyRent: 72600,
   ...over,
-});
-
-describe('escalation', () => {
-  it('raises rent 10% on each anniversary of the base date', () => {
-    const c = base();
-    expect(escalatedRent(c, 2025, 4)).toBe(66000);
-    expect(escalatedRent(c, 2026, 3)).toBe(66000);
-    expect(escalatedRent(c, 2026, 4)).toBe(72600);
-    expect(escalatedRent(c, 2027, 4)).toBe(79860);
-  });
-  it('never lowers rent for months before the base date', () => {
-    expect(escalatedRent(base(), 2024, 1)).toBe(66000);
-  });
 });
 
 describe('buildMonths', () => {
@@ -42,14 +27,10 @@ describe('buildMonths', () => {
     expect(totalRent(m)).toBe(72600 * 12);
   });
   it('prorates partial first and last months', () => {
-    const m = buildMonths(base({ rentFrom: '2026-04-16', rentTo: '2026-05-15', baseRent: 30000, escalationPct: 0 }));
+    const m = buildMonths(base({ rentFrom: '2026-04-16', rentTo: '2026-05-15', monthlyRent: 30000 }));
     expect(m).toHaveLength(2);
     expect(m[0]).toMatchObject({ days: 15, amount: 15000, paymentDate: '2026-04-16' });
     expect(m[1]).toMatchObject({ days: 15, amount: 14516.13 });
-  });
-  it('charges full rent for partial months when proration is off', () => {
-    const m = buildMonths(base({ rentFrom: '2026-04-16', rentTo: '2026-04-30', prorate: false, escalationPct: 0 }));
-    expect(m[0].amount).toBe(66000);
   });
   it('lets a hand-set month replace the computed amount', () => {
     const m = buildMonths(base({ overrides: { '2026-06': 70000 } }));
@@ -107,7 +88,7 @@ describe('normalizeConfig (untrusted input)', () => {
   it('repairs hostile or malformed imports instead of crashing', async () => {
     const { normalizeConfig } = await import('../src/lib/defaults');
     const c = normalizeConfig({
-      perPage: 9, template: 'evil', font: 42, grouping: null, accent: 'red', baseRent: 'abc', escalationPct: 5000,
+      perPage: 9, template: 'evil', font: 42, grouping: null, monthlyRent: 'abc',
       rentFrom: 'nope', landlordPan: 'ab-cde 1234f!!', signature: 'javascript:alert(1)',
       overrides: { '2026-04': 5, 'bad': 1, '2026-13': 2, '2026-05': -3, '2026-06': 'x' },
       tenantName: 'x'.repeat(5000),
@@ -116,9 +97,7 @@ describe('normalizeConfig (untrusted input)', () => {
     expect(c.template).toBe('classic');
     expect(c.font).toBe('Helvetica');
     expect(c.grouping).toBe('monthly');
-    expect(c.accent).toBe('#0f766e');
-    expect(c.baseRent).toBe(0);
-    expect(c.escalationPct).toBe(100);
+    expect(c.monthlyRent).toBe(0);
     expect(c.landlordPan).toBe('ABCDE1234F');
     expect(c.signature).toBe('');
     expect(c.overrides).toEqual({ '2026-04': 5 });
@@ -134,6 +113,14 @@ describe('normalizeConfig (untrusted input)', () => {
     const { normalizeConfig } = await import('../src/lib/defaults');
     const c = base({ overrides: { '2026-06': 70000 }, template: 'modern', perPage: 3 });
     expect(normalizeConfig(c)).toEqual(c);
+  });
+});
+
+describe('legacy field name', () => {
+  it('reads baseRent from older exports as the monthly rent', async () => {
+    const { normalizeConfig } = await import('../src/lib/defaults');
+    expect(normalizeConfig({ baseRent: 5000 } as never).monthlyRent).toBe(5000);
+    expect(normalizeConfig({ baseRent: 5000, monthlyRent: 7000 } as never).monthlyRent).toBe(7000);
   });
 });
 
@@ -153,22 +140,17 @@ describe('review regressions', () => {
     const m = buildMonths(c);
     return { m, issues: validate(c, m, buildReceipts(c, m), '2026-09-30') };
   };
-  it('a blank rent-in-force date neither yields NaN nor passes validation', () => {
-    const { m, issues } = run(base({ baseRentFrom: '' }));
-    expect(m.every((r) => Number.isFinite(r.amount))).toBe(true);
-    expect(issues.some((i) => i.field === 'baseRentFrom' && i.level === 'error')).toBe(true);
-  });
-  it('blocks zero-amount months and absurd escalations', () => {
+  it('blocks zero-amount months and absurd amounts', () => {
     expect(run(base({ overrides: { '2026-04': 0 } })).issues.some((i) => i.level === 'error')).toBe(true);
-    const wild = run(base({ escalationPct: 100, escalationMonths: 1, rentFrom: '2026-04-01', rentTo: '2030-03-31' }));
+    const wild = run(base({ overrides: { '2026-04': 200_000_000 } }));
     expect(wild.issues.some((i) => i.message.includes('10,00,00,000'))).toBe(true);
   });
   it('flags cash stamps on the receipt total, not each month', () => {
-    const c = base({ paymentMode: 'Cash', baseRent: 2000, baseRentFrom: '2026-04-01', escalationPct: 0, grouping: 'quarterly' });
+    const c = base({ paymentMode: 'Cash', monthlyRent: 2000, grouping: 'quarterly' });
     expect(run(c).issues.some((i) => i.message.includes('revenue stamp'))).toBe(true);
   });
   it('uses the 2% TDS note above 50,000 a month only', () => {
-    const at = run(base({ baseRent: 50000, baseRentFrom: '2026-04-01', escalationPct: 0 }));
+    const at = run(base({ monthlyRent: 50000 }));
     expect(at.issues.some((i) => i.message.includes('194-IB'))).toBe(false);
     expect(run(base()).issues.find((i) => i.message.includes('194-IB'))?.message).toContain('2%');
   });
@@ -200,7 +182,7 @@ describe('second review regressions', () => {
     expect(amountToWords(m[0].amount)).toContain('Sixty Eight Paise');
   });
   it('clamps the payment date into the rent period on both sides', () => {
-    const m = buildMonths(base({ rentFrom: '2026-04-01', rentTo: '2026-04-10', paymentDay: 25, escalationPct: 0 }));
+    const m = buildMonths(base({ rentFrom: '2026-04-01', rentTo: '2026-04-10', paymentDay: 25 }));
     expect(m[0].paymentDate).toBe('2026-04-10');
   });
   it('turns a fractional payment day into a whole day on import', async () => {

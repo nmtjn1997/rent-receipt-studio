@@ -29,15 +29,12 @@ export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], t
   if (months.length > MAX_MONTHS) {
     out.push({ level: 'error', field: 'rentFrom', message: `Pick at most ${MAX_MONTHS} months at a time.` });
   }
-  if (!isValidISO(cfg.baseRentFrom)) {
-    out.push({ level: 'error', field: 'baseRentFrom', message: 'Pick the date the current rent came into force.' });
-  }
-  if (!(cfg.baseRent > 0)) out.push({ level: 'error', field: 'baseRent', message: 'Monthly rent must be above zero.' });
+  if (!(cfg.monthlyRent > 0)) out.push({ level: 'error', field: 'monthlyRent', message: 'Monthly rent must be above zero.' });
 
   if (months.some((m) => !Number.isFinite(m.amount) || m.amount <= 0)) {
-    out.push({ level: 'error', field: 'baseRent', message: 'Every month needs a rent above zero. Reset or fix the highlighted month.' });
+    out.push({ level: 'error', field: 'monthlyRent', message: 'Every month needs a rent above zero. Reset or fix the highlighted month.' });
   } else if (months.some((m) => m.amount > MAX_RENT)) {
-    out.push({ level: 'error', field: 'baseRent', message: 'A month works out above INR 10,00,00,000. Check the rent and the yearly increase.' });
+    out.push({ level: 'error', field: 'monthlyRent', message: 'A month works out above INR 10,00,00,000. Check the rent.' });
   }
 
   if (receipts.some((r) => Math.abs(parseISO(r.paymentDate).y - parseISO(r.periodStart).y) > 1)) {
