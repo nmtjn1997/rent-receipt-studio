@@ -90,3 +90,14 @@ table.schedule { width: 100%; border-collapse: collapse; font-size: 13px; }
 a.btn-link { align-self: center; color: var(--accent); font-size: 13px; }
 .schedule td input[type=date] { width: 138px; text-align: left; }
 .schedule td input.date-edited { border-color: var(--accent); }
+
+.frame-note { display: none; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 13px; }
+@media (max-width: 760px) {
+  /* iOS Safari zooms the page when a focused field is under 16px; Android Chrome cannot embed PDFs. */
+  input, select, textarea { font-size: 16px; }
+  .frame { display: none; }
+  .frame-note { display: block; }
+  button, a.btn-link { min-height: 44px; }
+  a.btn-link { display: inline-flex; align-items: center; }
+  .schedule td input { font-size: 16px; }
+}

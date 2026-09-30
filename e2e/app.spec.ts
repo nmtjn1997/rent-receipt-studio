@@ -180,3 +180,15 @@ test('the signature control has an accessible name', async ({ page }) => {
   await blank(page);
   await expect(page.getByLabel("Owner's signature image")).toHaveAttribute('type', 'file');
 });
+
+test('phones get 16px fields (no iOS zoom), 44px buttons, and a note instead of a PDF frame', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await blank(page);
+  await page.getByRole('button', { name: 'Fill sample data' }).click();
+  const size = await page.getByLabel('Your name (tenant)').evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(size).toBeGreaterThanOrEqual(16);
+  const h = await page.getByTestId('download-pdf').evaluate((e) => e.getBoundingClientRect().height);
+  expect(h).toBeGreaterThanOrEqual(44);
+  await expect(page.getByTestId('preview')).toBeHidden();
+  await expect(page.getByText('Phones cannot show PDFs')).toBeVisible();
+});

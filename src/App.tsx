@@ -412,6 +412,9 @@ export function App() {
               This browser is not saving your profiles (storage is full or blocked). Use Export to keep a copy.
             </p>
           )}
+          <p className="frame-note">
+            Phones cannot show PDFs inside a web page. Use <b>Download PDF</b> or <b>Open in new tab</b> to see your receipts.
+          </p>
           <div className="frame">
             {pdfUrl ? (
               <iframe ref={frame} title="Receipt preview" src={pdfUrl} data-testid="preview" />
