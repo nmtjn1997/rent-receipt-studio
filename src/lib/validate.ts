@@ -8,6 +8,7 @@ export interface Issue {
   message: string;
 }
 
+export const MAX_MONTHS = 60;
 export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 
 export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], today = todayISO()): Issue[] {
@@ -23,6 +24,9 @@ export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], t
     out.push({ level: 'error', field: 'rentFrom', message: 'Pick a valid rent period.' });
   } else if (cfg.rentFrom > cfg.rentTo) {
     out.push({ level: 'error', field: 'rentFrom', message: '"Rent from" is after "Rent upto".' });
+  }
+  if (months.length > MAX_MONTHS) {
+    out.push({ level: 'error', field: 'rentFrom', message: `Pick at most ${MAX_MONTHS} months at a time.` });
   }
   if (!(cfg.baseRent > 0)) out.push({ level: 'error', field: 'baseRent', message: 'Monthly rent must be above zero.' });
 

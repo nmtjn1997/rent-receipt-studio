@@ -18,7 +18,8 @@ export function buildMonths(cfg: Config): MonthRow[] {
   const rows: MonthRow[] = [];
   let y = from.y;
   let m = from.m;
-  while (y < to.y || (y === to.y && m <= to.m)) {
+  // A hard stop well above the validated limit, so a mistyped year cannot freeze the tab.
+  while ((y < to.y || (y === to.y && m <= to.m)) && rows.length <= 121) {
     const dim = daysInMonth(y, m);
     const monthStart = toISO(y, m, 1);
     const monthEnd = toISO(y, m, dim);

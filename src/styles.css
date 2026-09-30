@@ -86,3 +86,4 @@ table.schedule { width: 100%; border-collapse: collapse; font-size: 13px; }
 .issues .warn { color: var(--warn); border-color: var(--warn); }
 .issues .info { color: var(--info); }
 .banner.err { color: var(--err); margin: 0; }
+a.btn-link { align-self: center; color: var(--accent); font-size: 13px; }

@@ -102,3 +102,48 @@ describe('validate', () => {
     expect(run(base({ landlordPan: '' })).some((i) => i.field === 'landlordPan' && i.level === 'warn')).toBe(true);
   });
 });
+
+describe('normalizeConfig (untrusted input)', () => {
+  it('repairs hostile or malformed imports instead of crashing', async () => {
+    const { normalizeConfig } = await import('../src/lib/defaults');
+    const c = normalizeConfig({
+      perPage: 9, template: 'evil', font: 42, grouping: null, accent: 'red', baseRent: 'abc', escalationPct: 5000,
+      rentFrom: 'nope', landlordPan: 'ab-cde 1234f!!', signature: 'javascript:alert(1)',
+      overrides: { '2026-04': 5, 'bad': 1, '2026-13': 2, '2026-05': -3, '2026-06': 'x' },
+      tenantName: 'x'.repeat(5000),
+    } as never);
+    expect(c.perPage).toBe(2);
+    expect(c.template).toBe('classic');
+    expect(c.font).toBe('Helvetica');
+    expect(c.grouping).toBe('monthly');
+    expect(c.accent).toBe('#0f766e');
+    expect(c.baseRent).toBe(0);
+    expect(c.escalationPct).toBe(100);
+    expect(c.landlordPan).toBe('ABCDE1234F');
+    expect(c.signature).toBe('');
+    expect(c.overrides).toEqual({ '2026-04': 5 });
+    expect(c.tenantName).toHaveLength(500);
+    expect(c.rentFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+  it('survives non-object input', async () => {
+    const { normalizeConfig } = await import('../src/lib/defaults');
+    expect(normalizeConfig(null as never).perPage).toBe(2);
+    expect(normalizeConfig('x' as never).template).toBe('classic');
+  });
+  it('keeps a valid profile unchanged', async () => {
+    const { normalizeConfig } = await import('../src/lib/defaults');
+    const c = base({ overrides: { '2026-06': 70000 }, template: 'modern', perPage: 3 });
+    expect(normalizeConfig(c)).toEqual(c);
+  });
+});
+
+describe('limits', () => {
+  it('rejects ranges longer than 60 months', () => {
+    const c = base({ rentFrom: '2020-04-01', rentTo: '2030-03-31' });
+    const m = buildMonths(c);
+    expect(validate(c, m, buildReceipts(c, m), '2026-09-30').some((i) => i.message.includes('at most 60'))).toBe(true);
+  });
+  it('never builds an unbounded schedule', () => {
+    expect(buildMonths(base({ rentFrom: '2000-01-01', rentTo: '2100-12-31' })).length).toBeLessThanOrEqual(122);
+  });
+});

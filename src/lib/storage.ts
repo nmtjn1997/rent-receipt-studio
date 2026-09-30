@@ -8,12 +8,16 @@ export interface Store {
   configs: Config[];
 }
 
-const seedFiles = import.meta.glob('../seed.local.json', { eager: true, import: 'default' }) as Record<string, unknown>;
+// Private profiles for local development only. Production builds never bundle this file,
+// so a hosted copy cannot leak anyone's details even if the file exists on the build machine.
+const seedFiles = import.meta.env.DEV
+  ? (import.meta.glob('../seed.local.json', { eager: true, import: 'default' }) as Record<string, unknown>)
+  : {};
 
 function seedConfigs(): Config[] {
   const raw = Object.values(seedFiles)[0];
   if (!Array.isArray(raw)) return [];
-  return raw.map((c) => normalizeConfig({ ...(c as Partial<Config>), id: (c as Partial<Config>).id ?? crypto.randomUUID() }));
+  return raw.map((c) => normalizeConfig(c as Partial<Config>));
 }
 
 export function loadStore(): Store {

@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import JSZip from 'jszip';
 import { Field, Section } from './components/fields';
 import { ScheduleTable } from './components/ScheduleTable';
 import { defaultConfig, normalizeConfig } from './lib/defaults';
 import { fyBounds, fyLabel, fyOf, todayISO } from './lib/dates';
-import { generatePdf } from './lib/pdf';
 import { buildMonths, buildReceipts } from './lib/schedule';
 import { loadStore, saveStore, type Store } from './lib/storage';
 import { PAYMENT_MODES, type Config } from './lib/types';
@@ -17,6 +15,18 @@ const download = (blob: Blob, name: string) => {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
+
+const loadPdf = () => import('./lib/pdf');
+
+const SAMPLE: Partial<Config> = {
+  tenantName: 'Alex Sharma',
+  landlordName: 'Priya Verma',
+  landlordPan: 'ABCDE1234F',
+  landlordAddress: '14 Lake View Apartments, MG Road, Bengaluru 560001',
+  propertyAddress: 'Flat 4B, Lake View Apartments, MG Road, Bengaluru 560001',
+  baseRent: 25000,
+  escalationPct: 5,
 };
 
 const slug = (s: string) => s.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'rent';
@@ -53,6 +63,7 @@ export function App() {
     let url = '';
     const t = setTimeout(async () => {
       try {
+        const { generatePdf } = await loadPdf();
         const bytes = await generatePdf(cfg, receipts);
         if (cancelled) return;
         url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
@@ -80,6 +91,7 @@ export function App() {
   const downloadPdf = async () => {
     setBusy('pdf');
     try {
+      const { generatePdf } = await loadPdf();
       download(new Blob([(await generatePdf(cfg, receipts)) as BlobPart], { type: 'application/pdf' }), `${baseName}.pdf`);
     } finally {
       setBusy('');
@@ -89,6 +101,7 @@ export function App() {
   const downloadZip = async () => {
     setBusy('zip');
     try {
+      const [{ generatePdf }, { default: JSZip }] = await Promise.all([loadPdf(), import('jszip')]);
       const zip = new JSZip();
       for (const [i, r] of receipts.entries()) {
         const bytes = await generatePdf({ ...cfg, perPage: 1 }, [r]);
@@ -130,6 +143,8 @@ export function App() {
   const onSignature = (file?: File) => {
     if (!file) return;
     if (!/^image\/(png|jpeg)$/.test(file.type)) return setError('Signature must be a PNG or JPEG image.');
+    if (file.size > 500_000) return setError('Signature image is over 500 KB. Use a smaller image.');
+    setError('');
     const reader = new FileReader();
     reader.onload = () => update({ signature: String(reader.result) });
     reader.readAsDataURL(file);
@@ -187,10 +202,17 @@ export function App() {
 
       <main className="layout">
         <div className="form">
-          <Section title="Parties">
+          <Section
+            title="Parties"
+            aside={
+              <button type="button" className="link" onClick={() => update(SAMPLE)}>
+                Fill sample data
+              </button>
+            }
+          >
             <Field label="Profile name" hint="Only for you, never printed."><input {...text('label')} /></Field>
-            <Field label="Your name (tenant)" required error={errorFor('tenantName')}><input {...text('tenantName')} autoComplete="off" /></Field>
-            <Field label="Landlord's name" required error={errorFor('landlordName')}><input {...text('landlordName')} autoComplete="off" /></Field>
+            <Field label="Your name (tenant)" required error={errorFor('tenantName')}><input {...text('tenantName', { placeholder: 'As on your rent agreement' })} autoComplete="off" /></Field>
+            <Field label="Landlord's name" required error={errorFor('landlordName')}><input {...text('landlordName', { placeholder: 'Owner of the house' })} autoComplete="off" /></Field>
             <Field
               label="Landlord's PAN"
               error={errorFor('landlordPan')}
@@ -339,6 +361,11 @@ export function App() {
               {busy === 'zip' ? 'Zipping…' : 'ZIP of single PDFs'}
             </button>
             <button type="button" onClick={printPdf} disabled={!pdfUrl}>Print</button>
+            {pdfUrl && (
+              <a className="btn-link" href={pdfUrl} target="_blank" rel="noopener">
+                Open in new tab
+              </a>
+            )}
           </div>
           {issues.length > 0 && (
             <ul className="issues" data-testid="issues">

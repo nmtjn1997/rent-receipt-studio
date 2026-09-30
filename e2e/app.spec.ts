@@ -87,3 +87,22 @@ test('warns when receipts are future dated', async ({ page }) => {
   await page.getByLabel('Financial year').selectOption(String(new Date().getFullYear() + 1));
   await expect(page.getByTestId('issues')).toContainText('dated in the future');
 });
+
+test('sample data fills a blank profile so a visitor can try it in one click', async ({ page }) => {
+  await blank(page);
+  await expect(page.getByTestId('download-pdf')).toBeDisabled();
+  await page.getByRole('button', { name: 'Fill sample data' }).click();
+  await expect(page.getByLabel('Your name (tenant)')).toHaveValue('Alex Sharma');
+  await expect(page.getByTestId('download-pdf')).toBeEnabled();
+});
+
+test('a hostile import file is repaired, not fatal', async ({ page }) => {
+  await blank(page);
+  await page.locator('input[type=file][accept="application/json"]').setInputFiles({
+    name: 'evil.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ label: 'Imported', perPage: 99, template: 'x', overrides: 'nope', tenantName: 'T' })),
+  });
+  await expect(page.getByLabel('Profile name')).toHaveValue('Imported');
+  await expect(page.getByLabel('Receipts per page')).toHaveValue('2');
+});
