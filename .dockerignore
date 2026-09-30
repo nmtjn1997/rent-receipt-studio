@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-single
+out
+test-results
+playwright-report
+.git
+src/seed.local.json
+*.local.json
+.claude
