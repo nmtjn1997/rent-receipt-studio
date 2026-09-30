@@ -1,0 +1,1 @@
+Run `npm run verify` in the repo root. If anything fails, read the failure, fix the cause (not the test, unless the test is wrong), and run it again. Repeat until it passes, then run `npm run samples` and inspect the PNGs for layout problems. Report what you changed.
