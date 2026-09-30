@@ -37,7 +37,8 @@ test('full FY schedule, escalation, override, and live preview', async ({ page }
   await fillBasics(page);
   await page.getByLabel('Yearly increase (%)').fill('10');
   await page.getByLabel('Rent in force since').fill('2025-04-01');
-  await page.getByLabel('Financial year').selectOption('2026');
+  await page.getByLabel('Rent from').fill('2026-04-01');
+  await page.getByLabel('Rent upto').fill('2027-03-31');
   await expect(page.getByTestId('schedule').locator('tbody tr')).toHaveCount(12);
   // 20000 raised 10% once after 12 months: 22000 x 12
   await expect(page.getByTestId('total')).toHaveText('2,64,000');
@@ -119,6 +120,8 @@ test('required fields expose their state to assistive tech', async ({ page }) =>
 test('a month can be paid on a different day and reset', async ({ page }) => {
   await blank(page);
   await fillBasics(page);
+  await page.getByLabel('Rent from').fill('2026-04-01');
+  await page.getByLabel('Rent upto').fill('2027-03-31');
   const jun = page.getByLabel('Payment date for Jun 2026');
   const original = await jun.inputValue();
   await jun.fill('2026-06-09');
@@ -134,4 +137,46 @@ test('phone width has no sideways scrolling and the schedule scrolls inside its 
   const { sw, cw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
   expect(sw).toBeLessThanOrEqual(cw);
   await expect(page.getByTestId('download-pdf')).toBeVisible();
+});
+
+test('clearing a rent cell mid-edit does not snap back, and blur resets it', async ({ page }) => {
+  await blank(page);
+  await fillBasics(page);
+  const cell = page.getByLabel(/^Rent for /).first();
+  await cell.fill('');
+  await expect(cell).toHaveValue('');
+  await cell.blur();
+  await expect(cell).toHaveValue('20000');
+});
+
+test('grouped receipts lock the per-month payment date', async ({ page }) => {
+  await blank(page);
+  await fillBasics(page);
+  await page.getByLabel('Receipts as').selectOption('quarterly');
+  await expect(page.getByLabel(/^Payment date for /).first()).toBeDisabled();
+});
+
+test('importing something that is not a profile shows an error and adds nothing', async ({ page }) => {
+  await blank(page);
+  const before = await page.getByLabel('Profile').locator('option').count();
+  await page.locator('input[type=file][accept="application/json"]').setInputFiles({
+    name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('[1,2,3]'),
+  });
+  await expect(page.getByRole('alert').filter({ hasText: 'not a profile' })).toBeVisible();
+  await expect(page.getByLabel('Profile').locator('option')).toHaveCount(before);
+});
+
+test('an array of profiles imports every one, and sample data hides once a profile has content', async ({ page }) => {
+  await blank(page);
+  await page.locator('input[type=file][accept="application/json"]').setInputFiles({
+    name: 'many.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify([{ label: 'A', tenantName: 'T' }, { label: 'B', tenantName: 'U' }])),
+  });
+  await expect(page.getByLabel('Profile').locator('option', { hasText: /^A$|^B$/ })).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Fill sample data' })).toHaveCount(0);
+});
+
+test('the signature control has an accessible name', async ({ page }) => {
+  await blank(page);
+  await expect(page.getByLabel("Owner's signature image")).toHaveAttribute('type', 'file');
 });

@@ -140,12 +140,19 @@ export function App() {
     download(new Blob([JSON.stringify({ ...cfg, signature: '' }, null, 2)], { type: 'application/json' }), `${slug(cfg.label)}.json`);
 
   const importJson = async (file: File) => {
+    const KNOWN = ['tenantName', 'landlordName', 'propertyAddress', 'baseRent', 'label'];
     try {
-      const raw = JSON.parse(await file.text()) as Partial<Config>;
-      const next = normalizeConfig({ ...raw, id: uid() });
-      setStore((s) => ({ activeId: next.id, configs: [...s.configs, next] }));
+      const raw = JSON.parse(await file.text()) as unknown;
+      const list = Array.isArray(raw) ? raw : [raw];
+      const profiles = list.filter(
+        (x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x) && KNOWN.some((k) => k in x),
+      );
+      if (!profiles.length) throw new Error('no profile');
+      const added = profiles.map((r) => normalizeConfig({ ...r, id: uid() }));
+      setError('');
+      setStore((s) => ({ activeId: added[0].id, configs: [...s.configs, ...added] }));
     } catch {
-      setError('That file is not a valid profile JSON.');
+      setError('That file is not a profile. Export one from this app and import that file.');
     }
   };
 
@@ -193,7 +200,7 @@ export function App() {
         <div className="profile-bar">
           <select aria-label="Profile" value={store.activeId} onChange={(e) => setStore((s) => ({ ...s, activeId: e.target.value }))}>
             {store.configs.map((c) => (
-              <option key={c.id} value={c.id}>{c.label}</option>
+              <option key={c.id} value={c.id}>{c.label.trim() || 'Untitled'}</option>
             ))}
           </select>
           <button type="button" onClick={() => addProfile()}>New</button>
@@ -220,9 +227,11 @@ export function App() {
           <Section
             title="Parties"
             aside={
-              <button type="button" className="link" onClick={() => update(SAMPLE)}>
-                Fill sample data
-              </button>
+              !cfg.tenantName && !cfg.landlordName && !cfg.baseRent ? (
+                <button type="button" className="link" onClick={() => update(SAMPLE)}>
+                  Fill sample data
+                </button>
+              ) : undefined
             }
           >
             <Field label="Profile name" hint="Only for you, never printed."><input {...text('label')} /></Field>
@@ -361,9 +370,9 @@ export function App() {
               <label><input type="checkbox" checked={cfg.showPan} onChange={(e) => update({ showPan: e.target.checked })} /> Show landlord PAN</label>
               <label><input type="checkbox" checked={cfg.grayPage} onChange={(e) => update({ grayPage: e.target.checked })} /> Grey page tint</label>
             </div>
-            <Field label="Owner's signature image" wide hint="PNG or JPEG. Stays in this browser; leave empty to sign by hand after printing.">
+            <Field label="Owner's signature image" wide htmlFor="signature-file" hint="PNG or JPEG. Stays in this browser; leave empty to sign by hand after printing.">
               <div className="sig-row">
-                <input type="file" accept="image/png,image/jpeg" onChange={(e) => onSignature(e.target.files?.[0])} />
+                <input id="signature-file" type="file" accept="image/png,image/jpeg" onChange={(e) => onSignature(e.target.files?.[0])} />
                 {cfg.signature && (
                   <>
                     <img className="sig-thumb" src={cfg.signature} alt="Signature preview" />

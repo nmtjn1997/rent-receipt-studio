@@ -44,7 +44,7 @@ Your own profile can be preloaded without ever being committed. Copy the example
 cp src/seed.example.json src/seed.local.json
 ```
 
-`src/seed.local.json` is gitignored, is read only by `npm run dev`, and `npm run build` fails if any of its values reach the bundle.
+`src/seed.local.json` is gitignored, is read only by `npm run dev`, and `npm run build` fails, naming the field, if any of its private values reach the bundle. Values copied unchanged from the example are public, so they never trigger it.
 More in [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Develop

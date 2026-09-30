@@ -7,10 +7,12 @@ interface FieldProps {
   error?: string;
   wide?: boolean;
   required?: boolean;
+  /** Id of a control inside `children` when the child is a wrapper element. */
+  htmlFor?: string;
 }
 
 /** Label sits outside the control, hint and error are linked with aria-describedby. */
-export function Field({ label, children, hint, error, wide, required }: FieldProps) {
+export function Field({ label, children, hint, error, wide, required, htmlFor }: FieldProps) {
   const id = useId();
   const msgId = `${id}-msg`;
   const control =
@@ -26,7 +28,7 @@ export function Field({ label, children, hint, error, wide, required }: FieldPro
         : children;
   return (
     <div className={'field' + (wide ? ' wide' : '') + (error ? ' has-error' : '')}>
-      <label className="field-label" htmlFor={id}>
+      <label className="field-label" htmlFor={htmlFor ?? id}>
         {label}
         {required && <b aria-hidden="true"> *</b>}
       </label>
