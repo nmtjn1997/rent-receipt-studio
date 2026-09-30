@@ -30,7 +30,7 @@ jobs:
       - run: npm run build:single
       # The offline one-file copy is served next to the site so visitors can download it.
       - run: cp dist-single/rent-receipt.html dist/rent-receipt.html
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
