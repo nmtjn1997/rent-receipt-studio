@@ -4,6 +4,7 @@ import { defaultConfig } from '../src/lib/defaults';
 import { generatePdf } from '../src/lib/pdf';
 import { buildReceipts } from '../src/lib/schedule';
 import type { Config } from '../src/lib/types';
+import { JPEG_B64, PNG_B64 } from './fixtures';
 
 const cfg = (over: Partial<Config> = {}): Config => ({
   ...defaultConfig(new Date('2026-09-30')),
@@ -90,5 +91,69 @@ describe('generatePdf', () => {
   it('produces a valid empty-safe document when there are no receipts', async () => {
     const c = cfg({ rentFrom: '2027-01-01', rentTo: '2026-01-01' });
     expect((await extract(await generatePdf(c, []))).numPages).toBe(1);
+  });
+});
+
+describe('layout safety', () => {
+  const LONG = 'Flat 12B, Some Very Long Building Name Apartments, Block C, Sector 21, Some Locality Extension, Some Big City, State 400001';
+
+  async function items(bytes: Uint8Array) {
+    const doc = await getDocument({ data: bytes, useSystemFonts: true }).promise;
+    const out: Array<{ page: number; str: string; x: number; y: number; w: number }> = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      for (const it of (await (await doc.getPage(p)).getTextContent()).items) {
+        if ('str' in it && it.str.trim()) out.push({ page: p, str: it.str, x: it.transform[4], y: it.transform[5], w: it.width });
+      }
+    }
+    return out;
+  }
+
+  it('keeps every receipt inside its own slot, even with long quarterly text at 3 and 4 per page', async () => {
+    for (const perPage of [3, 4] as const) {
+      const c = cfg({ perPage, grouping: 'quarterly', propertyAddress: LONG, landlordAddress: LONG, footer: 'Computer generated', numbering: true });
+      const all = await items(await generatePdf(c, buildReceipts(c)));
+      const slotH = (841.89 - 92) / perPage;
+      const slotOf = (y: number) => Math.floor((841.89 - 46 - y) / slotH);
+      const byPage = (pg: number) => all.filter((i) => i.page === pg);
+      for (const pg of new Set(all.map((i) => i.page))) {
+        const titles = byPage(pg).filter((i) => i.str.includes('RECEIPT OF HOUSE RENT')).sort((a, b) => b.y - a.y);
+        const dates = byPage(pg).filter((i) => i.str.startsWith('Date:')).sort((a, b) => b.y - a.y);
+        expect(dates).toHaveLength(titles.length);
+        titles.forEach((t, k) => expect(slotOf(dates[k].y)).toBe(slotOf(t.y)));
+      }
+    }
+  });
+
+  it('never draws past the right page edge, even for an unbroken 150-character token', async () => {
+    const c = cfg({ tenantName: 'T'.repeat(120), propertyAddress: 'A'.repeat(150), landlordAddress: 'B'.repeat(150) });
+    const all = await items(await generatePdf(c, buildReceipts(c)));
+    expect(Math.max(...all.map((i) => i.x + i.w))).toBeLessThanOrEqual(595.28 - 40);
+  });
+
+  it('shrinks the font for long content and leaves short content at the base size', async () => {
+    const sizeOf = async (over: Partial<Config>) => {
+      const c = cfg({ perPage: 4, ...over });
+      const doc = await getDocument({ data: await generatePdf(c, buildReceipts(c)), useSystemFonts: true }).promise;
+      const t = (await (await doc.getPage(1)).getTextContent()).items.find((i) => 'str' in i && i.str.includes('Received a sum'));
+      return t && 'transform' in t ? t.transform[0] : 0;
+    };
+    expect(await sizeOf({ propertyAddress: '12 Sample Road', landlordAddress: '12 Sample Road' })).toBeCloseTo(9, 1);
+    expect(await sizeOf({ grouping: 'quarterly', propertyAddress: LONG, landlordAddress: LONG })).toBeLessThan(9);
+  });
+});
+
+describe('signature images', () => {
+  const embedded = async (dataUrl: string) => {
+    const c = cfg({ signature: dataUrl });
+    const bytes = await generatePdf(c, buildReceipts(c));
+    return (Buffer.from(bytes).toString('latin1').match(/\/Subtype \/Image/g) ?? []).length;
+  };
+  it('embeds by content, so a JPEG labelled png still works', async () => {
+    expect(await embedded('data:image/png;base64,' + JPEG_B64)).toBeGreaterThan(0);
+    expect(await embedded('data:image/jpeg;base64,' + PNG_B64)).toBeGreaterThan(0);
+  });
+  it('reports an unreadable image instead of silently dropping it', async () => {
+    const c = cfg({ signature: 'data:image/png;base64,' + Buffer.from('not an image').toString('base64') });
+    await expect(generatePdf(c, buildReceipts(c))).rejects.toThrow(/signature image could not be read/);
   });
 });

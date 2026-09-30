@@ -44,13 +44,30 @@ function clean(text: string, font: PDFFont): string {
     .join('');
 }
 
-function tokenize(segs: Seg[], fonts: Fonts, size: number): Word[] {
+/** Splits a token that is wider than the line into pieces that each fit. */
+function chunkToFit(part: string, font: PDFFont, size: number, maxW: number): string[] {
+  if (font.widthOfTextAtSize(part, size) <= maxW) return [part];
+  const chunks: string[] = [];
+  let cur = '';
+  for (const ch of Array.from(part)) {
+    if (cur && font.widthOfTextAtSize(cur + ch, size) > maxW) {
+      chunks.push(cur);
+      cur = '';
+    }
+    cur += ch;
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
+function tokenize(segs: Seg[], fonts: Fonts, size: number, maxW: number): Word[] {
   const words: Word[] = [];
   for (const seg of segs) {
     const font = seg.b ? fonts.bold : fonts.regular;
     for (const part of clean(seg.t, font).split(/(\n|[ \t]+)/)) {
       if (part === '') continue;
-      words.push({ t: part, b: !!seg.b, w: part === '\n' ? 0 : font.widthOfTextAtSize(part, size) });
+      if (part === '\n') words.push({ t: part, b: !!seg.b, w: 0 });
+      else for (const piece of chunkToFit(part, font, size, maxW)) words.push({ t: piece, b: !!seg.b, w: font.widthOfTextAtSize(piece, size) });
     }
   }
   return words;
@@ -59,7 +76,7 @@ function tokenize(segs: Seg[], fonts: Fonts, size: number): Word[] {
 function wrap(segs: Seg[], fonts: Fonts, size: number, maxW: number): Line[] {
   const lines: Line[] = [[]];
   let x = 0;
-  for (const word of tokenize(segs, fonts, size)) {
+  for (const word of tokenize(segs, fonts, size, maxW)) {
     if (word.t === '\n') {
       lines.push([]);
       x = 0;
@@ -162,13 +179,15 @@ export function receiptBody(cfg: Config, r: Receipt): Seg[] {
 
 async function embedSignature(pdf: PDFDocument, dataUrl: string) {
   if (!dataUrl) return undefined;
+  // The declared MIME type comes from a file extension, so trust the bytes instead.
+  const bytes = Uint8Array.from(atob(dataUrl.split(',')[1] ?? ''), (c) => c.charCodeAt(0));
   try {
-    const b64 = dataUrl.split(',')[1] ?? '';
-    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    return dataUrl.startsWith('data:image/png') ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) return await pdf.embedPng(bytes);
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return await pdf.embedJpg(bytes);
   } catch {
-    return undefined;
+    /* falls through to the error below */
   }
+  throw new Error('The signature image could not be read. Remove it or upload a standard PNG or JPEG.');
 }
 
 function drawDashedRule(page: PDFPage, y: number, x1: number, x2: number) {
@@ -181,6 +200,29 @@ function drawDashedRule(page: PDFPage, y: number, x1: number, x2: number) {
   });
 }
 
+const MIN_SIZE = 7;
+
+/**
+ * Largest font size (shared by every receipt, so the page looks even) at which
+ * each receipt still fits its slot. Measured by drawing on a scratch document.
+ */
+async function fitSize(cfg: Config, receipts: Receipt[], slotH: number, contentW: number): Promise<number> {
+  const scratch = await PDFDocument.create();
+  const [reg, bold] = FAMILY[cfg.font];
+  const fonts: Fonts = { regular: await scratch.embedFont(reg), bold: await scratch.embedFont(bold) };
+  const accent = hexToRgb(cfg.accent);
+  for (let size: number = BASE_SIZE[cfg.perPage]; size > MIN_SIZE; size -= 0.5) {
+    const top = A4.h - MARGIN;
+    const fits = receipts.every((r) => {
+      const page = scratch.addPage([A4.w, A4.h]);
+      const bottom = drawOne(page, fonts, cfg, r, { top: top - 14, size, lineH: size * 1.55, contentW, sig: undefined, accent });
+      return top - bottom <= slotH - 6;
+    });
+    if (fits) return size;
+  }
+  return MIN_SIZE;
+}
+
 export async function generatePdf(cfg: Config, receipts: Receipt[]): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Rent receipts ${cfg.rentFrom} to ${cfg.rentTo}`);
@@ -191,10 +233,10 @@ export async function generatePdf(cfg: Config, receipts: Receipt[]): Promise<Uin
   const sig = await embedSignature(pdf, cfg.signature);
   const accent = hexToRgb(cfg.accent);
   const per = cfg.perPage;
-  const size = BASE_SIZE[per];
-  const lineH = size * 1.55;
   const contentW = A4.w - MARGIN * 2;
   const slotH = (A4.h - MARGIN * 2) / per;
+  const size = await fitSize(cfg, receipts, slotH, contentW);
+  const lineH = size * 1.55;
   const pageCount = Math.max(1, Math.ceil(receipts.length / per));
 
   for (let p = 0; p < pageCount; p++) {
@@ -220,7 +262,7 @@ interface Ctx {
   accent: ReturnType<typeof rgb>;
 }
 
-function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx) {
+function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx): number {
   const x0 = MARGIN;
   const titleSize = c.size + 6;
   const ink = rgb(0.08, 0.08, 0.08);
@@ -328,4 +370,5 @@ function drawOne(page: PDFPage, fonts: Fonts, cfg: Config, r: Receipt, c: Ctx) {
       color: c.accent,
     });
   }
+  return bottom;
 }
