@@ -6,7 +6,7 @@ Pick whichever fits. All of them serve the same static files, and none of them e
 |---|---|---|
 | Just use it | The GitHub Pages link | A browser |
 | Use it offline, no install | `rent-receipt.html` from Releases | A browser |
-| Run it on my laptop | `npm run serve` | Node 20+ |
+| Run it on my laptop | `npm run serve` | Node 22.13+ |
 | Run it on a server or NAS | Docker | Docker |
 | Host my own public copy | Fork + GitHub Pages | A GitHub account |
 
@@ -34,7 +34,7 @@ npm run build:single      # writes dist-single/rent-receipt.html
 
 ## 3. Run locally with Node
 
-Install Node 20 or newer from https://nodejs.org (all platforms), then:
+Install Node 22.13 or newer from https://nodejs.org (all platforms), then:
 
 ```bash
 git clone https://github.com/<your-username>/rent-receipt-studio.git
@@ -48,7 +48,7 @@ npm run serve             # production build, http://127.0.0.1:5178
 |---|---|
 | macOS | `brew install node` or the nodejs.org installer |
 | Windows | nodejs.org installer, then use PowerShell or Git Bash. Every npm script is cross-platform. |
-| Ubuntu / Debian | `sudo apt install nodejs npm` may be old. Use `curl -fsSL https://deb.nodesource.com/setup_20.x \| sudo -E bash -` then `sudo apt install nodejs`, or `nvm install 20`. |
+| Ubuntu / Debian | `sudo apt install nodejs npm` may be old. Use `curl -fsSL https://deb.nodesource.com/setup_22.x \| sudo -E bash -` then `sudo apt install nodejs`, or `nvm install 22`. |
 | Any | `npx serve dist` after `npm run build` also works with any static file server |
 
 To let another device on your network open it, run `npx vite preview --host 0.0.0.0 --port 5178` after a build.

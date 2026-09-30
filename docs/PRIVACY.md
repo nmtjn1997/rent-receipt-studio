@@ -15,7 +15,7 @@ There are no cookies, no analytics, no accounts and no server.
 ## Check it yourself
 
 1. Open DevTools, Network tab, then generate and download a PDF. Only the site's own static files load.
-2. Turn off Wi-Fi after the page loads. Everything still works.
+2. Generate one preview, then turn off Wi-Fi. Everything keeps working (the PDF code loads on first use, so going offline before the first preview will not work; the one-file `rent-receipt.html` has no such limit).
 3. With the Docker image: `curl -I http://localhost:8080` shows `connect-src 'none'`, which makes the browser refuse any request the page tries to send.
 
 ## If you host your own copy

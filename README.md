@@ -34,7 +34,7 @@ Everything runs in your browser, so your PAN, names and addresses are never uplo
 | Docker | `docker compose up -d --build` then open http://localhost:8080 |
 | One file, no install | `npm run build:single` gives `dist-single/rent-receipt.html` |
 
-Needs Node 20+ for the npm route. Docker images are built for amd64 and arm64.
+Needs Node 22.13+ for the npm route. Docker images are built for amd64 and arm64.
 
 ## Keep your details local
 
