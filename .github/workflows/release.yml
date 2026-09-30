@@ -44,7 +44,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
       # amd64 for servers and Windows/Intel Macs, arm64 for Apple Silicon and Raspberry Pi.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
