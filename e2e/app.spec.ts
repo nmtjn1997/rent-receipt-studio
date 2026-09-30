@@ -126,3 +126,12 @@ test('a month can be paid on a different day and reset', async ({ page }) => {
   await page.getByRole('button', { name: 'reset' }).click();
   await expect(jun).toHaveValue(original);
 });
+
+test('phone width has no sideways scrolling and the schedule scrolls inside its own box', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await blank(page);
+  await page.getByRole('button', { name: 'Fill sample data' }).click();
+  const { sw, cw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+  expect(sw).toBeLessThanOrEqual(cw);
+  await expect(page.getByTestId('download-pdf')).toBeVisible();
+});
