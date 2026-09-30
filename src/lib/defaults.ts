@@ -1,3 +1,4 @@
+import { uid } from './uid';
 import { fyBounds, fyOf, isValidISO, todayISO } from './dates';
 import type { Config } from './types';
 
@@ -5,7 +6,7 @@ export function defaultConfig(now = new Date()): Config {
   const fy = fyOf(todayISO(now));
   const { from, to } = fyBounds(fy);
   return {
-    id: crypto.randomUUID(),
+    id: uid(),
     label: 'New profile',
     tenantName: '',
     landlordName: '',

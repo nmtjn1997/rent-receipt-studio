@@ -6,3 +6,4 @@ src/seed.local.json
 *.local.json
 .DS_Store
 out
+dist-single

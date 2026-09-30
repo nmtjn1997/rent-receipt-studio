@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Field, Section } from './components/fields';
 import { ScheduleTable } from './components/ScheduleTable';
 import { defaultConfig, normalizeConfig } from './lib/defaults';
+import { uid } from './lib/uid';
 import { fyBounds, fyLabel, fyOf, todayISO } from './lib/dates';
 import { buildMonths, buildReceipts } from './lib/schedule';
 import { loadStore, saveStore, type Store } from './lib/storage';
@@ -116,7 +117,7 @@ export function App() {
   const printPdf = () => frame.current?.contentWindow?.print();
 
   const addProfile = (from?: Config) => {
-    const next = from ? { ...from, id: crypto.randomUUID(), label: `${from.label} copy` } : defaultConfig();
+    const next = from ? { ...from, id: uid(), label: `${from.label} copy` } : defaultConfig();
     setStore((s) => ({ activeId: next.id, configs: [...s.configs, next] }));
   };
   const deleteProfile = () => {
@@ -133,7 +134,7 @@ export function App() {
   const importJson = async (file: File) => {
     try {
       const raw = JSON.parse(await file.text()) as Partial<Config>;
-      const next = normalizeConfig({ ...raw, id: crypto.randomUUID() });
+      const next = normalizeConfig({ ...raw, id: uid() });
       setStore((s) => ({ activeId: next.id, configs: [...s.configs, next] }));
     } catch {
       setError('That file is not a valid profile JSON.');
