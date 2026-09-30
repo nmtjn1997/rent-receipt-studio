@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
-    "verify": "npm run typecheck && npm run test && npm run build && npm run build:single && npm run e2e",
+    "verify": "npm run typecheck && npm run test && npm run build && npm run build:single && npm run samples && npm run e2e",
     "samples": "node scripts/samples.mjs",
     "serve": "npm run build && vite preview --host 127.0.0.1 --port 5178",
     "build:single": "tsc --noEmit && vite build --mode single --outDir dist-single && node scripts/rename-single.mjs && node scripts/check-dist.mjs dist-single",

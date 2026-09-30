@@ -1,10 +1,15 @@
 // Cross-platform wrapper: `npm run samples` writes sample PDFs to ./out for visual review.
-import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
+import { startVitest } from 'vitest/node';
 
-const vitest = createRequire(import.meta.url).resolve('vitest/vitest.mjs');
-const r = spawnSync(process.execPath, [vitest, 'run', 'tests/samples.test.ts'], {
-  stdio: 'inherit',
-  env: { ...process.env, SAMPLES_DIR: 'out' },
-});
-process.exit(r.status ?? 1);
+process.env.SAMPLES_DIR = 'out';
+const vitest = await startVitest('test', ['tests/samples.test.ts'], { run: true, watch: false });
+const failed = !vitest || vitest.state.getCountOfFailedTests() > 0;
+await vitest?.close();
+const missing = ['classic', 'modern', 'minimal'].filter((t) => !existsSync(`out/sample-${t}.pdf`));
+if (failed || missing.length) {
+  console.error('samples failed', missing.length ? `(missing: ${missing.join(', ')})` : '');
+  process.exit(1);
+}
+console.log('samples written to ./out');
+process.exit(0);
