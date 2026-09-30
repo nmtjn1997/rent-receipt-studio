@@ -14,13 +14,18 @@
     "serve": "npm run build && vite preview --host 127.0.0.1 --port 5178",
     "build:single": "tsc --noEmit && vite build --mode single --outDir dist-single && node scripts/rename-single.mjs && node scripts/check-dist.mjs dist-single",
     "screenshots": "node scripts/screenshots.mjs",
-    "devices": "node scripts/devices.mjs"
+    "devices": "node scripts/devices.mjs",
+    "cli": "node bin/rent-receipt.mjs",
+    "mcp": "node bin/rent-receipt-mcp.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "jszip": "^3.10.2",
     "pdf-lib": "^1.17.1",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -36,5 +41,9 @@
   },
   "engines": {
     "node": ">=22.13"
+  },
+  "bin": {
+    "rent-receipt": "bin/rent-receipt.mjs",
+    "rent-receipt-mcp": "bin/rent-receipt-mcp.mjs"
   }
 }

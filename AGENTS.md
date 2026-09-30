@@ -17,6 +17,7 @@ npm run verify     # typecheck, unit tests, build + leak check, one-file build, 
 | Look at the layout | `npm run samples`, then `pdftoppm -r 70 -png out/sample-classic.pdf out/p` and read the PNGs |
 | Docker check | `docker build -t rr . && docker run --rm -p 8080:8080 rr`, then `BASE_URL=http://127.0.0.1:8080 npx playwright test e2e/app.spec.ts` |
 | Phones and tablets (9 emulated devices) | `npm run dev` in one shell, `npm run devices` in another; screenshots in `out/` |
+| CLI and MCP | `npm run cli -- --help`; `tests/cli.test.ts` spawns both and does a real MCP stdio round trip |
 | Refresh README screenshot | `npm run dev` in one shell, `npm run screenshots` in another |
 
 Poppler substitutes fonts, so bold can look faint in PNGs. `tests/pdf.test.ts` proves bold through pdfjs instead.
@@ -31,6 +32,7 @@ Poppler substitutes fonts, so bold can look faint in PNGs. `tests/pdf.test.ts` p
 | `src/lib/validate.ts` | Errors and advisory notes (PAN, dates, future receipts, TDS, stamp) |
 | `src/lib/defaults.ts` | Default profile and `normalizeConfig`, the one gate for untrusted data |
 | `src/lib/storage.ts` | localStorage profiles; dev-only `src/seed.local.json` |
+| `src/cli/` | `generate.ts` (shared), `cli.ts`, `mcp.ts`; launched by `bin/*.mjs` through tsx |
 | `src/App.tsx` | The whole UI; the preview is the real PDF in an iframe |
 | `tests/`, `e2e/` | vitest (incl. PDF text extraction), Playwright |
 | `scripts/` | `check-dist.mjs` leak guard, single-file rename, samples, screenshots |

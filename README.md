@@ -36,6 +36,14 @@ Everything runs in your browser, so your PAN, names and addresses are never uplo
 
 Needs Node 22.13+ for the npm route. Docker images are built for amd64 and arm64.
 
+## No browser? Use the CLI or an AI client
+
+```bash
+npm run cli -- --tenant "Alex Sharma" --landlord "Priya Verma" --property "Flat 4B, Lake View, Bengaluru" --rent 25000 --fy 2026 --through 2026-09
+```
+
+Four required values and a PDF appears. An MCP server exposes the same thing to Claude Code, Cursor and other clients. See [docs/CLI.md](docs/CLI.md).
+
 ## Keep your details local
 
 Your own profile can be preloaded without ever being committed. Copy the example and edit it:
