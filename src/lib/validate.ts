@@ -1,4 +1,4 @@
-import { isValidISO, todayISO } from './dates';
+import { isValidISO, parseISO, todayISO } from './dates';
 import type { Config, MonthRow, Receipt } from './types';
 import { totalRent } from './schedule';
 
@@ -38,6 +38,10 @@ export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], t
     out.push({ level: 'error', field: 'baseRent', message: 'Every month needs a rent above zero. Reset or fix the highlighted month.' });
   } else if (months.some((m) => m.amount > MAX_RENT)) {
     out.push({ level: 'error', field: 'baseRent', message: 'A month works out above INR 10,00,00,000. Check the rent and the yearly increase.' });
+  }
+
+  if (receipts.some((r) => Math.abs(parseISO(r.paymentDate).y - parseISO(r.periodStart).y) > 1)) {
+    out.push({ level: 'error', message: 'A payment date is more than a year away from its rent period. Check the year.' });
   }
 
   const annual = months.length ? totalRent(months) : 0;

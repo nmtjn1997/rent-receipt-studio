@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { defaultConfig } from '../src/lib/defaults';
-import { generatePdf } from '../src/lib/pdf';
+import { generatePdf, receiptBody } from '../src/lib/pdf';
 import { buildReceipts } from '../src/lib/schedule';
 import type { Config } from '../src/lib/types';
 import { JPEG_B64, PNG_B64 } from './fixtures';
@@ -155,5 +155,36 @@ describe('signature images', () => {
   it('reports an unreadable image instead of silently dropping it', async () => {
     const c = cfg({ signature: 'data:image/png;base64,' + Buffer.from('not an image').toString('base64') });
     await expect(generatePdf(c, buildReceipts(c))).rejects.toThrow(/signature image could not be read/);
+  });
+});
+
+describe('receipt wording', () => {
+  const body = (c: Config, i = 0) => {
+    const r = buildReceipts(c)[i];
+    return receiptBody(c, r).map((s) => s.t).join('');
+  };
+  it('states a per-month rate only when the amount really is that rate times months', () => {
+    expect(body(cfg())).toContain('@ INR 33,333 per month');
+    const partial = cfg({ baseRent: 30000, rentFrom: '2026-04-16', grouping: 'consolidated' });
+    const text = body(partial);
+    expect(text).not.toContain('per month');
+    expect(text).toContain('Month-wise: Apr 2026 INR 15,000; May 2026 INR 30,000');
+    expect(text).toContain('INR 3,45,000/-');
+  });
+  it('lists each month when rent changes inside a grouped receipt', () => {
+    const c = cfg({ baseRent: 20000, baseRentFrom: '2026-04-01', escalationPct: 10, escalationMonths: 3, grouping: 'half-yearly' });
+    expect(body(c)).toMatch(/Month-wise: Apr 2026 INR 20,000;.*Jul 2026 INR 22,000/);
+  });
+  it('uses the first month payment date on grouped receipts and says so in the date line', () => {
+    const c = cfg({ grouping: 'quarterly', paymentDates: { '2026-05': '2026-05-09' } });
+    expect(body(c)).toContain('on (payment date) Apr 1, 2026');
+  });
+});
+
+describe('overlong text', () => {
+  it('fails loudly, not silently, when text cannot fit the slot', async () => {
+    const huge = 'word '.repeat(90);
+    const c = cfg({ perPage: 4, grouping: 'quarterly', propertyAddress: huge, landlordAddress: huge });
+    await expect(generatePdf(c, buildReceipts(c))).rejects.toThrow(/too long to fit 4 receipts per page/);
   });
 });

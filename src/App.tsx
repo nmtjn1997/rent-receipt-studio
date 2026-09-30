@@ -276,7 +276,7 @@ export function App() {
               <input {...num('escalationMonths')} />
             </Field>
             <Field label="Paid on day of month" hint="1 to 31. Short months use their last day.">
-              <input type="number" min={1} max={31} value={cfg.paymentDay} onChange={(e) => update({ paymentDay: Math.min(31, Math.max(1, Number(e.target.value) || 1)) })} />
+              <input type="number" min={1} max={31} value={cfg.paymentDay} onChange={(e) => update({ paymentDay: Math.min(31, Math.max(1, Math.round(Number(e.target.value)) || 1)) })} />
             </Field>
             <Field label="Partial months">
               <select value={cfg.prorate ? 'pro' : 'full'} onChange={(e) => update({ prorate: e.target.value === 'pro' })}>

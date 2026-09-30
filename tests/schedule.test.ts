@@ -45,7 +45,7 @@ describe('buildMonths', () => {
     const m = buildMonths(base({ rentFrom: '2026-04-16', rentTo: '2026-05-15', baseRent: 30000, escalationPct: 0 }));
     expect(m).toHaveLength(2);
     expect(m[0]).toMatchObject({ days: 15, amount: 15000, paymentDate: '2026-04-16' });
-    expect(m[1]).toMatchObject({ days: 15, amount: Math.round((30000 * 15) / 31) });
+    expect(m[1]).toMatchObject({ days: 15, amount: 14516.13 });
   });
   it('charges full rent for partial months when proration is off', () => {
     const m = buildMonths(base({ rentFrom: '2026-04-16', rentTo: '2026-04-30', prorate: false, escalationPct: 0 }));
@@ -188,5 +188,28 @@ describe('per-month payment date', () => {
     const c = normalizeConfig(base({ paymentDates: { '2026-06': '2026-06-09', '2026-99': '2026-01-01', '2026-07': 'x' } as never }));
     expect(c.paymentDates).toEqual({ '2026-06': '2026-06-09' });
     expect(buildReceipts(c)[2].paymentDate).toBe('2026-06-09');
+  });
+});
+
+describe('second review regressions', () => {
+  it('rounds every amount to paise once, so words and figures agree', async () => {
+    const { amountToWords, inr } = await import('../src/lib/words');
+    const m = buildMonths(base({ overrides: { '2026-04': 2.675 } }));
+    expect(m[0].amount).toBe(2.68);
+    expect(inr(m[0].amount)).toBe('2.68');
+    expect(amountToWords(m[0].amount)).toContain('Sixty Eight Paise');
+  });
+  it('clamps the payment date into the rent period on both sides', () => {
+    const m = buildMonths(base({ rentFrom: '2026-04-01', rentTo: '2026-04-10', paymentDay: 25, escalationPct: 0 }));
+    expect(m[0].paymentDate).toBe('2026-04-10');
+  });
+  it('turns a fractional payment day into a whole day on import', async () => {
+    const { normalizeConfig } = await import('../src/lib/defaults');
+    expect(normalizeConfig({ paymentDay: 15.5 } as never).paymentDay).toBe(16);
+  });
+  it('rejects a payment date years away from its period', () => {
+    const c = base({ paymentDates: { '2026-04': '0002-04-01' } });
+    const m = buildMonths(c);
+    expect(validate(c, m, buildReceipts(c, m), '2026-09-30').some((i) => i.level === 'error' && i.message.includes('payment date'))).toBe(true);
   });
 });

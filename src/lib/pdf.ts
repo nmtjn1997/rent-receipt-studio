@@ -143,7 +143,8 @@ function drawRich(page: PDFPage, fonts: Fonts, segs: Seg[], o: DrawOpts): number
 export function receiptBody(cfg: Config, r: Receipt): Seg[] {
   const d = (iso: string) => formatDate(iso, cfg.dateFormat);
   const rents = new Set(r.months.map((m) => m.rent));
-  const partialOnly = r.months.length === 1 && r.months[0].days < r.months[0].monthDays && !r.months[0].overridden && cfg.prorate;
+  // "@ INR x per month" is only true when every month is billed at exactly that rent.
+  const flatRate = rents.size === 1 && r.months.every((m) => m.amount === m.rent);
   const segs: Seg[] = [
     { t: 'Received a sum of ' },
     { t: `INR ${inr(r.amount)}/-`, b: true },
@@ -157,9 +158,7 @@ export function receiptBody(cfg: Config, r: Receipt): Seg[] {
     { t: d(r.paymentDate), b: true },
     { t: ' towards the rent' },
   ];
-  if (r.months.length === 1 && !partialOnly) {
-    segs.push({ t: ' @ ' }, { t: `INR ${inr(r.months[0].rent)}`, b: true }, { t: ' per month' });
-  } else if (r.months.length > 1 && rents.size === 1) {
+  if (flatRate) {
     segs.push({ t: ' @ ' }, { t: `INR ${inr(r.months[0].rent)}`, b: true }, { t: ' per month' });
   }
   segs.push(
@@ -171,7 +170,7 @@ export function receiptBody(cfg: Config, r: Receipt): Seg[] {
     { t: cfg.propertyAddress.replace(/\s*\n\s*/g, ', ').trim(), b: true },
     { t: '.' },
   );
-  if (r.months.length > 1 && rents.size > 1) {
+  if (r.months.length > 1 && !flatRate) {
     segs.push({ t: ' Month-wise: ' + r.months.map((m) => `${monthLabel(m.key)} INR ${inr(m.amount)}`).join('; ') + '.' });
   }
   return segs;
@@ -206,12 +205,12 @@ const MIN_SIZE = 7;
  * Largest font size (shared by every receipt, so the page looks even) at which
  * each receipt still fits its slot. Measured by drawing on a scratch document.
  */
-async function fitSize(cfg: Config, receipts: Receipt[], slotH: number, contentW: number): Promise<number> {
+async function fitSize(cfg: Config, receipts: Receipt[], slotH: number, contentW: number): Promise<number | null> {
   const scratch = await PDFDocument.create();
   const [reg, bold] = FAMILY[cfg.font];
   const fonts: Fonts = { regular: await scratch.embedFont(reg), bold: await scratch.embedFont(bold) };
   const accent = hexToRgb(cfg.accent);
-  for (let size: number = BASE_SIZE[cfg.perPage]; size > MIN_SIZE; size -= 0.5) {
+  for (let size: number = BASE_SIZE[cfg.perPage]; size >= MIN_SIZE; size -= 0.5) {
     const top = A4.h - MARGIN;
     const fits = receipts.every((r) => {
       const page = scratch.addPage([A4.w, A4.h]);
@@ -220,7 +219,7 @@ async function fitSize(cfg: Config, receipts: Receipt[], slotH: number, contentW
     });
     if (fits) return size;
   }
-  return MIN_SIZE;
+  return null;
 }
 
 export async function generatePdf(cfg: Config, receipts: Receipt[]): Promise<Uint8Array> {
@@ -236,6 +235,9 @@ export async function generatePdf(cfg: Config, receipts: Receipt[]): Promise<Uin
   const contentW = A4.w - MARGIN * 2;
   const slotH = (A4.h - MARGIN * 2) / per;
   const size = await fitSize(cfg, receipts, slotH, contentW);
+  if (size === null) {
+    throw new Error(`The text is too long to fit ${per} receipt${per > 1 ? 's' : ''} per page. Shorten the addresses or use fewer receipts per page.`);
+  }
   const lineH = size * 1.55;
   const pageCount = Math.max(1, Math.ceil(receipts.length / per));
 

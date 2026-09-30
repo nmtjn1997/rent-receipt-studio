@@ -60,6 +60,8 @@ const NUM_KEYS: Array<[keyof Config, number, number]> = [
   ['fyStart', 1990, 2100], ['baseRent', 0, 100_000_000], ['escalationPct', 0, 100], ['escalationMonths', 1, 120], ['paymentDay', 1, 31],
 ];
 
+const INT_KEYS = new Set<keyof Config>(['fyStart', 'escalationMonths', 'paymentDay']);
+
 const MAX_TEXT = 500;
 
 /**
@@ -78,7 +80,9 @@ export function normalizeConfig(raw: Partial<Config> | Record<string, unknown>):
   for (const k of DATE_KEYS) if (typeof src[k] === 'string' && isValidISO(src[k] as string)) out[k] = src[k];
   for (const [k, lo, hi] of NUM_KEYS) {
     const v = Number(src[k]);
-    if (src[k] !== undefined && src[k] !== '' && Number.isFinite(v)) out[k] = Math.min(hi, Math.max(lo, v));
+    if (src[k] !== undefined && src[k] !== '' && Number.isFinite(v)) {
+      out[k] = Math.min(hi, Math.max(lo, INT_KEYS.has(k) ? Math.round(v) : v));
+    }
   }
   for (const [k, allowed] of Object.entries(ENUMS)) {
     if ((allowed as readonly unknown[]).includes(src[k])) out[k] = src[k];
@@ -92,7 +96,7 @@ export function normalizeConfig(raw: Partial<Config> | Record<string, unknown>):
   if (src.overrides && typeof src.overrides === 'object') {
     for (const [k, v] of Object.entries(src.overrides as Record<string, unknown>)) {
       const n = Number(v);
-      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(k) && Number.isFinite(n) && n >= 0 && n < 100_000_000) overrides[k] = n;
+      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(k) && Number.isFinite(n) && n >= 0 && n < 100_000_000) overrides[k] = Math.round(n * 100) / 100;
     }
   }
   out.overrides = overrides;
