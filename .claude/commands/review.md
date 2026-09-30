@@ -1,0 +1,1 @@
+Review the current diff against AGENTS.md. Check, in order: personal data in tracked files, any new network call or remote asset, untrusted input that skips `normalizeConfig`, PDF text that could throw on non-Latin-1, missing tests, docs that no longer match. List findings as Issue / Fix pairs, most severe first. Do not edit unless asked.

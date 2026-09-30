@@ -1,0 +1,6 @@
+---
+description: Rent Receipt Studio project rules
+alwaysApply: true
+---
+Read AGENTS.md at the repo root and follow it. Run `npm run verify` after every change.
+Never put real names, PAN or addresses in tracked files. Stay fully client-side.

@@ -1,0 +1,1 @@
+Add a new receipt template named $ARGUMENTS by following "Adding a template" in AGENTS.md. Render it with `npm run samples`, look at the PNG, and adjust until it is clean at 1, 2, 3 and 4 receipts per page.

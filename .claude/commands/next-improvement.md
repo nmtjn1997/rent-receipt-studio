@@ -1,0 +1,1 @@
+Open docs/BACKLOG.md and take the first unchecked item. Write the test first, implement, run `npm run verify`, tick the item, and commit it on its own with a conventional message. If the item is bigger than a day of work, split it in the backlog and do the first slice. Stop after one item and report.

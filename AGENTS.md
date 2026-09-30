@@ -1,17 +1,24 @@
 # Rent Receipt Studio: agent guide
 
-Browser-only generator for Section 10(13A) HRA rent receipts. No backend, no network calls, no analytics.
-The landlord PAN and addresses never leave the browser, so never add code that uploads them.
+Browser-only generator for Section 10(13A) HRA rent receipts. Static site, no backend, no network calls, no analytics.
+Hosted on GitHub Pages and as a Docker image. Anyone can fork it, so treat every change as public.
 
-## The loop (run it after every change, fix until green)
+## The loop (run after every change, fix until green)
 
 ```bash
-npm run verify     # typecheck, unit tests, production build, Playwright e2e
+npm run verify     # typecheck, unit tests, build + leak check, one-file build, Playwright e2e
 ```
 
-Faster inner loops: `npm test` (vitest, ~5s) and `npm run e2e` (needs Google Chrome installed).
-To look at the layout: `npm run samples`, then `pdftoppm -r 70 -png out/sample-classic.pdf out/p` and read the PNGs.
-Poppler substitutes fonts, so bold can look faint there. `tests/pdf.test.ts` proves bold via pdfjs.
+| Need | Command |
+|---|---|
+| Fast inner loop | `npm test` (vitest, a few seconds) |
+| Browser tests | `npm run e2e` (needs Google Chrome; starts the dev server itself) |
+| Same tests against a deployment | `BASE_URL=https://host/path/ npx playwright test e2e/app.spec.ts` |
+| Look at the layout | `npm run samples`, then `pdftoppm -r 70 -png out/sample-classic.pdf out/p` and read the PNGs |
+| Docker check | `docker build -t rr . && docker run --rm -p 8080:8080 rr`, then `BASE_URL=http://127.0.0.1:8080 npx playwright test e2e/app.spec.ts` |
+| Refresh README screenshot | `npm run dev` in one shell, `npm run screenshots` in another |
+
+Poppler substitutes fonts, so bold can look faint in PNGs. `tests/pdf.test.ts` proves bold through pdfjs instead.
 
 ## Map
 
@@ -20,25 +27,39 @@ Poppler substitutes fonts, so bold can look faint there. `tests/pdf.test.ts` pro
 | `src/lib/schedule.ts` | FY months, escalation, proration, grouping into receipts |
 | `src/lib/words.ts` | Indian number to words (`amountToWords`), digit grouping (`inr`) |
 | `src/lib/pdf.ts` | pdf-lib renderer, three templates, rich-text wrapping |
-| `src/lib/validate.ts` | PAN format, missing fields, future-dated receipts, TDS and stamp notes |
-| `src/lib/storage.ts` | localStorage profiles, optional `src/seed.local.json` |
-| `src/App.tsx` | The whole UI; preview is the real PDF in an iframe |
-| `tests/` | vitest; `pdf.test.ts` extracts text from generated PDFs |
-| `e2e/` | Playwright against `npm run dev` on 127.0.0.1:5177 |
+| `src/lib/validate.ts` | Errors and advisory notes (PAN, dates, future receipts, TDS, stamp) |
+| `src/lib/defaults.ts` | Default profile and `normalizeConfig`, the one gate for untrusted data |
+| `src/lib/storage.ts` | localStorage profiles; dev-only `src/seed.local.json` |
+| `src/App.tsx` | The whole UI; the preview is the real PDF in an iframe |
+| `tests/`, `e2e/` | vitest (incl. PDF text extraction), Playwright |
+| `scripts/` | `check-dist.mjs` leak guard, single-file rename, samples, screenshots |
+| `docs/` | Architecture with sequence diagrams, hosting, privacy, tax notes, backlog |
 
-## Rules
+## Hard rules
 
-- Every behaviour change ships with a test in the same change. Prefer asserting on extracted PDF text over snapshots.
-- Standard PDF fonts only cover Latin-1. New text passes through `clean()` in `pdf.ts` so unsupported characters cannot throw.
-- Rent for a month is `overrides[key] ?? escalatedRent(...)`. Do not add a second source of truth.
-- `src/seed.local.json` is gitignored and holds real profiles. Never commit it, never paste its contents into docs or tests.
-- Tests use fake names (Test Tenant, Test Landlord, ABCDE1234F). Keep it that way.
-- Receipts must state rent that was actually paid. Keep the future-date warning; do not remove or silence it.
-- Match the surrounding style. No new dependency without a reason written in the change.
+1. **No personal data, ever.** Code, tests, docs, screenshots and commit messages use `Test Tenant`, `Test Landlord`, `ABCDE1234F`, `Alex Sharma`, `Priya Verma`. Real profiles live only in the gitignored `src/seed.local.json`.
+2. **Stay client-side.** No fetch, no analytics, no remote fonts or scripts. The nginx CSP sets `connect-src 'none'` and a test suite passes against it; do not loosen it.
+3. **All external data goes through `normalizeConfig`.** Imported JSON and old localStorage are untrusted.
+4. **Rent for a month is `overrides[key] ?? escalatedRent(...)`.** Do not add a second source of truth.
+5. **Standard PDF fonts are Latin-1 only.** New text goes through `clean()` in `pdf.ts` so unsupported characters cannot throw.
+6. **Keep the future-date warning.** A receipt records rent actually paid.
+7. Every behaviour change ships with a test. Prefer asserting on extracted PDF text over snapshots.
+8. Match the surrounding style. A new dependency needs a reason in the commit message.
+9. Comments describe the code as it is now, not its history.
+
+## Commits
+
+Small, phased, conventional prefix (`feat`, `fix`, `docs`, `ci`, `build`, `test`, `chore`), body says why.
+Do not commit `dist*`, `out`, `test-results` or anything `*.local.json`.
+
+## Improving the project
+
+Pick the top open item in `docs/BACKLOG.md`, do it as its own commit with tests, tick it off, run the loop. Repeat.
+Slash commands in `.claude/commands/`: `/fix-loop`, `/review`, `/next-improvement`, `/add-template`.
 
 ## Adding a template
 
-1. Add the id to `TemplateId` in `src/lib/types.ts`.
+1. Add the id to `TemplateId` in `src/lib/types.ts` and to `ENUMS.template` in `src/lib/defaults.ts`.
 2. Branch on `cfg.template` in `drawOne` (`src/lib/pdf.ts`).
 3. Add the `<option>` in `App.tsx`.
-4. The "renders every template and font" test in `tests/pdf.test.ts` picks it up once you add it to its list.
+4. Add it to the template list in the "renders every template and font" test.
