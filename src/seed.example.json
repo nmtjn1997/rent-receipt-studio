@@ -1,0 +1,17 @@
+[
+  {
+    "label": "My flat",
+    "tenantName": "Alex Sharma",
+    "landlordName": "Priya Verma",
+    "landlordPan": "ABCDE1234F",
+    "landlordAddress": "14 Lake View Apartments, MG Road, Bengaluru 560001",
+    "propertyAddress": "Flat 4B, Lake View Apartments, MG Road, Bengaluru 560001",
+    "fyStart": 2026,
+    "rentFrom": "2026-04-01",
+    "rentTo": "2027-03-31",
+    "baseRent": 25000,
+    "baseRentFrom": "2025-04-01",
+    "escalationPct": 5,
+    "paymentMode": "Online Transfer"
+  }
+]
