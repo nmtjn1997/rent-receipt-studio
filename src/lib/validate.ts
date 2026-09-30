@@ -9,6 +9,7 @@ export interface Issue {
 }
 
 export const MAX_MONTHS = 60;
+export const MAX_RENT = 100_000_000;
 export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 
 export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], today = todayISO()): Issue[] {
@@ -28,7 +29,16 @@ export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], t
   if (months.length > MAX_MONTHS) {
     out.push({ level: 'error', field: 'rentFrom', message: `Pick at most ${MAX_MONTHS} months at a time.` });
   }
+  if (!isValidISO(cfg.baseRentFrom)) {
+    out.push({ level: 'error', field: 'baseRentFrom', message: 'Pick the date the current rent came into force.' });
+  }
   if (!(cfg.baseRent > 0)) out.push({ level: 'error', field: 'baseRent', message: 'Monthly rent must be above zero.' });
+
+  if (months.some((m) => !Number.isFinite(m.amount) || m.amount <= 0)) {
+    out.push({ level: 'error', field: 'baseRent', message: 'Every month needs a rent above zero. Reset or fix the highlighted month.' });
+  } else if (months.some((m) => m.amount > MAX_RENT)) {
+    out.push({ level: 'error', field: 'baseRent', message: 'A month works out above INR 10,00,00,000. Check the rent and the yearly increase.' });
+  }
 
   const annual = months.length ? totalRent(months) : 0;
   const pan = cfg.landlordPan.trim().toUpperCase();
@@ -49,13 +59,13 @@ export function validate(cfg: Config, months: MonthRow[], receipts: Receipt[], t
       message: `${future} receipt${future > 1 ? 's are' : ' is'} dated in the future. Issue a receipt only for rent actually paid.`,
     });
   }
-  if (cfg.paymentMode === 'Cash' && months.some((m) => m.amount > 5000)) {
+  if (cfg.paymentMode === 'Cash' && receipts.some((r) => r.amount > 5000)) {
     out.push({ level: 'info', message: 'Cash rent above INR 5,000 needs a Re.1 revenue stamp. Keep the stamp option on.' });
   }
-  if (months.some((m) => m.amount >= 50_000)) {
+  if (months.some((m) => m.rent > 50_000)) {
     out.push({
       level: 'info',
-      message: 'Rent of INR 50,000 or more per month: the tenant deducts TDS at 5% (Section 194-IB). It does not change the receipt.',
+      message: 'Rent above INR 50,000 a month: an individual tenant deducts TDS at 2% under Section 194-IB (confirm the current rate). It does not change the receipt.',
     });
   }
   return out;

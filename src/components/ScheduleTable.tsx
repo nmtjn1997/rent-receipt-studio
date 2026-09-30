@@ -37,6 +37,7 @@ export function ScheduleTable({ cfg, months, onOverride }: Props) {
                   min={0}
                   value={m.amount}
                   onChange={(e) => {
+                    if (e.target.value === '') return onOverride(m.key, null);
                     const v = Number(e.target.value);
                     if (Number.isFinite(v) && v >= 0) onOverride(m.key, v);
                   }}

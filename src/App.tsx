@@ -3,7 +3,7 @@ import { Field, Section } from './components/fields';
 import { ScheduleTable } from './components/ScheduleTable';
 import { defaultConfig, normalizeConfig } from './lib/defaults';
 import { uid } from './lib/uid';
-import { fyBounds, fyLabel, fyOf, todayISO } from './lib/dates';
+import { fyBounds, fyLabel, fyOf, isValidISO, todayISO } from './lib/dates';
 import { buildMonths, buildReceipts } from './lib/schedule';
 import { loadStore, saveStore, type Store } from './lib/storage';
 import { PAYMENT_MODES, type Config } from './lib/types';
@@ -81,7 +81,8 @@ export function App() {
     };
   }, [cfg, receipts, blocked]);
 
-  const fy = fyLabel(cfg.fyStart);
+  const activeFy = isValidISO(cfg.rentFrom) ? fyOf(cfg.rentFrom) : cfg.fyStart;
+  const fy = fyLabel(activeFy);
   const baseName = `rent-receipts-${slug(cfg.tenantName)}-fy${fy}`;
 
   const pickFY = (start: number) => {
@@ -94,6 +95,8 @@ export function App() {
     try {
       const { generatePdf } = await loadPdf();
       download(new Blob([(await generatePdf(cfg, receipts)) as BlobPart], { type: 'application/pdf' }), `${baseName}.pdf`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy('');
     }
@@ -109,6 +112,8 @@ export function App() {
         zip.file(`${String(i + 1).padStart(2, '0')}-${r.periodStart.slice(0, 7)}.pdf`, bytes);
       }
       download(await zip.generateAsync({ type: 'blob' }), `${baseName}.zip`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy('');
     }
@@ -156,15 +161,21 @@ export function App() {
     onChange: (e: { target: { value: string } }) => update({ [key]: e.target.value } as Partial<Config>),
     ...extra,
   });
+  const LIMITS: Partial<Record<keyof Config, [number, number]>> = {
+    baseRent: [0, 100_000_000], escalationPct: [0, 100], escalationMonths: [1, 120],
+  };
   const num = (key: keyof Config) => ({
     type: 'number',
     min: 0,
     value: Number(cfg[key]) || '',
-    onChange: (e: { target: { value: string } }) => update({ [key]: Number(e.target.value) || 0 } as Partial<Config>),
+    onChange: (e: { target: { value: string } }) => {
+      const [lo, hi] = LIMITS[key] ?? [0, Number.MAX_SAFE_INTEGER];
+      update({ [key]: Math.min(hi, Math.max(lo, Number(e.target.value) || 0)) } as Partial<Config>);
+    },
   });
 
   const thisFy = fyOf(todayISO());
-  const fyOptions = Array.from({ length: 8 }, (_, i) => thisFy - 5 + i);
+  const fyOptions = Array.from(new Set([activeFy, ...Array.from({ length: 8 }, (_, i) => thisFy - 5 + i)])).sort();
 
   return (
     <div className="app">
@@ -234,7 +245,7 @@ export function App() {
 
           <Section title="Rent and period">
             <Field label="Financial year">
-              <select value={cfg.fyStart} onChange={(e) => pickFY(Number(e.target.value))}>
+              <select value={activeFy} onChange={(e) => pickFY(Number(e.target.value))}>
                 {fyOptions.map((y) => (
                   <option key={y} value={y}>FY {fyLabel(y)}</option>
                 ))}

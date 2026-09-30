@@ -4,7 +4,8 @@ import type { Config, MonthRow, Receipt } from './types';
 const GROUP_SIZE = { monthly: 1, quarterly: 3, 'half-yearly': 6, consolidated: Infinity } as const;
 
 export function escalatedRent(cfg: Pick<Config, 'baseRent' | 'baseRentFrom' | 'escalationPct' | 'escalationMonths'>, y: number, m: number): number {
-  const base = parseISO(cfg.baseRentFrom);
+  // An unusable base date means "no escalation yet" rather than NaN rent.
+  const base = isValidISO(cfg.baseRentFrom) ? parseISO(cfg.baseRentFrom) : { y, m };
   const elapsed = Math.max(0, (y - base.y) * 12 + (m - base.m));
   const every = Math.max(1, cfg.escalationMonths || 12);
   const steps = Math.floor(elapsed / every);

@@ -147,3 +147,29 @@ describe('limits', () => {
     expect(buildMonths(base({ rentFrom: '2000-01-01', rentTo: '2100-12-31' })).length).toBeLessThanOrEqual(122);
   });
 });
+
+describe('review regressions', () => {
+  const run = (c: Config) => {
+    const m = buildMonths(c);
+    return { m, issues: validate(c, m, buildReceipts(c, m), '2026-09-30') };
+  };
+  it('a blank rent-in-force date neither yields NaN nor passes validation', () => {
+    const { m, issues } = run(base({ baseRentFrom: '' }));
+    expect(m.every((r) => Number.isFinite(r.amount))).toBe(true);
+    expect(issues.some((i) => i.field === 'baseRentFrom' && i.level === 'error')).toBe(true);
+  });
+  it('blocks zero-amount months and absurd escalations', () => {
+    expect(run(base({ overrides: { '2026-04': 0 } })).issues.some((i) => i.level === 'error')).toBe(true);
+    const wild = run(base({ escalationPct: 100, escalationMonths: 1, rentFrom: '2026-04-01', rentTo: '2030-03-31' }));
+    expect(wild.issues.some((i) => i.message.includes('10,00,00,000'))).toBe(true);
+  });
+  it('flags cash stamps on the receipt total, not each month', () => {
+    const c = base({ paymentMode: 'Cash', baseRent: 2000, baseRentFrom: '2026-04-01', escalationPct: 0, grouping: 'quarterly' });
+    expect(run(c).issues.some((i) => i.message.includes('revenue stamp'))).toBe(true);
+  });
+  it('uses the 2% TDS note above 50,000 a month only', () => {
+    const at = run(base({ baseRent: 50000, baseRentFrom: '2026-04-01', escalationPct: 0 }));
+    expect(at.issues.some((i) => i.message.includes('194-IB'))).toBe(false);
+    expect(run(base()).issues.find((i) => i.message.includes('194-IB'))?.message).toContain('2%');
+  });
+});
