@@ -33,8 +33,10 @@ export function buildMonths(cfg: Config): MonthRow[] {
     const partial = days < dim;
     const amount = overridden || !partial || !cfg.prorate ? rent : Math.round((rent * days) / dim);
     const due = toISO(y, m, Math.min(Math.max(1, cfg.paymentDay), dim));
-    const paymentDate = due < periodStart ? periodStart : due;
-    rows.push({ key, monthStart, periodStart, periodEnd, days, monthDays: dim, rent, amount, paymentDate, overridden });
+    const picked = cfg.paymentDates[key];
+    const paymentDateOverridden = picked !== undefined && isValidISO(picked);
+    const paymentDate = paymentDateOverridden ? picked : due < periodStart ? periodStart : due;
+    rows.push({ key, monthStart, periodStart, periodEnd, days, monthDays: dim, rent, amount, paymentDate, overridden, paymentDateOverridden });
     m += 1;
     if (m > 12) {
       m = 1;

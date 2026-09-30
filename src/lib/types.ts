@@ -24,6 +24,8 @@ export interface Config {
   escalationMonths: number;
   /** 'YYYY-MM' to exact month amount, set by hand in the schedule table. */
   overrides: Record<string, number>;
+  /** 'YYYY-MM' to an exact payment date, for months paid on a different day. */
+  paymentDates: Record<string, string>;
   prorate: boolean;
   paymentDay: number;
   paymentMode: string;
@@ -58,6 +60,7 @@ export interface MonthRow {
   amount: number;
   paymentDate: string;
   overridden: boolean;
+  paymentDateOverridden: boolean;
 }
 
 export interface Receipt {

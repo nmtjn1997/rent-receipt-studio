@@ -115,3 +115,14 @@ test('required fields expose their state to assistive tech', async ({ page }) =>
   await expect(name).toHaveAccessibleDescription(/required/i);
   await expect(page.getByTestId('issues')).toHaveAttribute('aria-live', 'polite');
 });
+
+test('a month can be paid on a different day and reset', async ({ page }) => {
+  await blank(page);
+  await fillBasics(page);
+  const jun = page.getByLabel('Payment date for Jun 2026');
+  const original = await jun.inputValue();
+  await jun.fill('2026-06-09');
+  await expect(jun).toHaveValue('2026-06-09');
+  await page.getByRole('button', { name: 'reset' }).click();
+  await expect(jun).toHaveValue(original);
+});

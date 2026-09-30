@@ -294,6 +294,12 @@ export function App() {
               <ScheduleTable
                 cfg={cfg}
                 months={months}
+                onPaymentDate={(key, iso) => {
+                  const paymentDates = { ...cfg.paymentDates };
+                  if (iso === null) delete paymentDates[key];
+                  else paymentDates[key] = iso;
+                  update({ paymentDates });
+                }}
                 onOverride={(key, value) => {
                   const overrides = { ...cfg.overrides };
                   if (value === null) delete overrides[key];

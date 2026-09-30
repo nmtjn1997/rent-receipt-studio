@@ -87,3 +87,5 @@ table.schedule { width: 100%; border-collapse: collapse; font-size: 13px; }
 .issues .info { color: var(--info); }
 .banner.err { color: var(--err); margin: 0; }
 a.btn-link { align-self: center; color: var(--accent); font-size: 13px; }
+.schedule td input[type=date] { width: 138px; text-align: left; }
+.schedule td input.date-edited { border-color: var(--accent); }

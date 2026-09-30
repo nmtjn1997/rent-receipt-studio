@@ -173,3 +173,20 @@ describe('review regressions', () => {
     expect(run(base()).issues.find((i) => i.message.includes('194-IB'))?.message).toContain('2%');
   });
 });
+
+describe('per-month payment date', () => {
+  it('uses a hand-picked date for that month only', () => {
+    const m = buildMonths(base({ paymentDates: { '2026-06': '2026-06-09' } }));
+    expect(m[2]).toMatchObject({ paymentDate: '2026-06-09', paymentDateOverridden: true });
+    expect(m[3]).toMatchObject({ paymentDate: '2026-07-01', paymentDateOverridden: false });
+  });
+  it('ignores an unusable date instead of printing garbage', () => {
+    expect(buildMonths(base({ paymentDates: { '2026-06': 'soon' } as never }))[2].paymentDate).toBe('2026-06-01');
+  });
+  it('flows into the receipt date and survives normalizeConfig', async () => {
+    const { normalizeConfig } = await import('../src/lib/defaults');
+    const c = normalizeConfig(base({ paymentDates: { '2026-06': '2026-06-09', '2026-99': '2026-01-01', '2026-07': 'x' } as never }));
+    expect(c.paymentDates).toEqual({ '2026-06': '2026-06-09' });
+    expect(buildReceipts(c)[2].paymentDate).toBe('2026-06-09');
+  });
+});

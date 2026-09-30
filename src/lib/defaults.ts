@@ -21,6 +21,7 @@ export function defaultConfig(now = new Date()): Config {
     escalationPct: 0,
     escalationMonths: 12,
     overrides: {},
+    paymentDates: {},
     prorate: true,
     paymentDay: 1,
     paymentMode: 'Online Transfer',
@@ -95,5 +96,12 @@ export function normalizeConfig(raw: Partial<Config> | Record<string, unknown>):
     }
   }
   out.overrides = overrides;
+  const paymentDates: Record<string, string> = {};
+  if (src.paymentDates && typeof src.paymentDates === 'object') {
+    for (const [k, v] of Object.entries(src.paymentDates as Record<string, unknown>)) {
+      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(k) && typeof v === 'string' && isValidISO(v)) paymentDates[k] = v;
+    }
+  }
+  out.paymentDates = paymentDates;
   return out as unknown as Config;
 }
