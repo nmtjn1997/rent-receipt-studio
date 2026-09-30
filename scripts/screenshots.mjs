@@ -10,6 +10,6 @@ await page.getByRole('button', { name: 'New' }).click();
 await page.getByRole('button', { name: 'Fill sample data' }).click();
 await page.getByLabel('Financial year').selectOption('2025');
 await page.waitForTimeout(600);
-await page.screenshot({ path: 'docs/img/app.png' });
+await page.screenshot({ path: 'docs/img/app.png', clip: { x: 0, y: 0, width: 600, height: 900 } });
 await browser.close();
 console.log('wrote docs/img/app.png');
