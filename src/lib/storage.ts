@@ -36,10 +36,12 @@ export function loadStore(): Store {
   return { activeId: configs[0].id, configs };
 }
 
-export function saveStore(store: Store): void {
+/** Returns false when the browser refuses the write (quota, private mode) so the UI can say so. */
+export function saveStore(store: Store): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(store));
+    return true;
   } catch {
-    /* private mode or quota: the app still works, it just will not remember */
+    return false;
   }
 }

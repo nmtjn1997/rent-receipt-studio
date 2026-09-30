@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM node:20-alpine AS build
+# The output is static files, so build once on the host arch and only the nginx stage is per-arch.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

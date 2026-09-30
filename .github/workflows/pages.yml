@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck && npm test
       - run: npm run build
+      - run: npm run e2e
       - run: npm run build:single
       # The offline one-file copy is served next to the site so visitors can download it.
       - run: cp dist-single/rent-receipt.html dist/rent-receipt.html

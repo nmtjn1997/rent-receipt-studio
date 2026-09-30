@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function blank(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('./');
   await page.getByRole('button', { name: 'New' }).click();
 }
 
@@ -105,4 +105,13 @@ test('a hostile import file is repaired, not fatal', async ({ page }) => {
   });
   await expect(page.getByLabel('Profile name')).toHaveValue('Imported');
   await expect(page.getByLabel('Receipts per page')).toHaveValue('2');
+});
+
+test('required fields expose their state to assistive tech', async ({ page }) => {
+  await blank(page);
+  const name = page.getByLabel('Your name (tenant)');
+  await expect(name).toHaveAttribute('aria-required', 'true');
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  await expect(name).toHaveAccessibleDescription(/required/i);
+  await expect(page.getByTestId('issues')).toHaveAttribute('aria-live', 'polite');
 });

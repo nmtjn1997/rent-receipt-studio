@@ -41,11 +41,14 @@ export function App() {
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => saveStore(store), [store]);
+  const [storageFailed, setStorageFailed] = useState(false);
+  useEffect(() => setStorageFailed(!saveStore(store)), [store]);
 
   const update = useCallback(
-    (patch: Partial<Config>) =>
-      setStore((s) => ({ ...s, configs: s.configs.map((c) => (c.id === s.activeId ? { ...c, ...patch } : c)) })),
+    (patch: Partial<Config>) => {
+      setError('');
+      setStore((s) => ({ ...s, configs: s.configs.map((c) => (c.id === s.activeId ? { ...c, ...patch } : c)) }));
+    },
     [],
   );
 
@@ -77,7 +80,7 @@ export function App() {
     return () => {
       cancelled = true;
       clearTimeout(t);
-      if (url) setTimeout(() => URL.revokeObjectURL(url), 5000);
+      if (url) setTimeout(() => URL.revokeObjectURL(url), 60_000);
     };
   }, [cfg, receipts, blocked]);
 
@@ -253,7 +256,9 @@ export function App() {
             </Field>
             <Field label="Payment mode">
               <select {...text('paymentMode')}>
-                {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
+                {[...PAYMENT_MODES, ...((PAYMENT_MODES as readonly string[]).includes(cfg.paymentMode) ? [] : [cfg.paymentMode])].map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
               </select>
             </Field>
             <Field label="Rent from" required error={errorFor('rentFrom')}><input type="date" {...text('rentFrom')} /></Field>
@@ -380,13 +385,18 @@ export function App() {
             )}
           </div>
           {issues.length > 0 && (
-            <ul className="issues" data-testid="issues">
+            <ul className="issues" data-testid="issues" role="status" aria-live="polite">
               {issues.map((i, n) => (
                 <li key={n} className={i.level}>{i.message}</li>
               ))}
             </ul>
           )}
           {error && <p className="banner err" role="alert">{error}</p>}
+          {storageFailed && (
+            <p className="banner err" role="alert">
+              This browser is not saving your profiles (storage is full or blocked). Use Export to keep a copy.
+            </p>
+          )}
           <div className="frame">
             {pdfUrl ? (
               <iframe ref={frame} title="Receipt preview" src={pdfUrl} data-testid="preview" />
