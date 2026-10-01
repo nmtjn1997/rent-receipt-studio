@@ -8,7 +8,7 @@ COPY . .
 # Runs the typecheck, the bundle, and the check that no private seed data is in it.
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
